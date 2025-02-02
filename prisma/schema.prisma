@@ -1,0 +1,78 @@
+// This goes in prisma/schema.prisma
+
+// Tell Prisma what database we're using and how our code will look
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Tell Prisma how to connect to our database
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Define our User model (this works with Clerk)
+model User {
+  id        String     @id
+  email     String     @unique
+  giftCards GiftCard[] // This tells Prisma that one user can have many gift cards
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// Define our GiftCard model
+model GiftCard {
+  id             String    @id @default(cuid())
+  merchant       String
+  cardNumber     String?   // The ? means this field is optional
+  pin            String?
+  balance        Float
+  isNetworkCard  Boolean   @default(false)
+  expirationDate DateTime?
+  dateAdded      DateTime  @default(now())
+  dateSpent      DateTime?
+  status         String    @default("active")
+  
+  // Connect each gift card to a user
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // This helps our database look up gift cards quickly
+  @@index([userId])
+
+model CreditCard {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  cardName      String
+  issuer        String
+  annualFee     Float
+  nextFeeDate   DateTime?
+  rewardsType   String
+  baseRate      Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// In prisma/schema.prisma
+
+// This table stores all possible credit cards that users can choose from
+model AvailableCard {
+    id              String   @id @default(cuid())
+    issuer          String   // Like "AmEx", "Chase", etc.
+    cardName        String   // Full name of the card
+    type            String   // "Personal" or "Business"
+    annualFee       Float    // The card's annual fee (0 for no fee)
+    
+    // Benefits and Credits (stored as JSON so we can be flexible)
+    credits         Json?    // Stores the "Annual/Monthly Credits" column
+    freeNights      String?  // "Annual Free Nights or Points Bonus" column
+    
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+}
+
+}

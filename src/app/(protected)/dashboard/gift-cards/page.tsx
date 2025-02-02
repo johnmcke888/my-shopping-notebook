@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Gift, Plus, Trash2, AlertCircle, Check, X } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from '@clerk/nextjs';
+import { prisma } from '@/lib/db';
 
 type GiftCard = {
     id: number;
@@ -44,6 +46,33 @@ export default function GiftCardsPage() {
     const [cardToDelete, setCardToDelete] = useState<GiftCard | null>(null);
     const [cardToSpend, setCardToSpend] = useState<GiftCard | null>(null);
     const [editingCard, setEditingCard] = useState<GiftCard | null>(null);
+    const { userId } = useAuth();  // This lets us know which user is logged in
+
+    useEffect(() => {
+        // This function will run when the page first loads
+        async function loadGiftCards() {
+            // Make sure we have a user ID
+            if (!userId) return;
+
+            try {
+                // Ask our API for the user's gift cards
+                const response = await fetch(`/api/giftcards?userId=${userId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch gift cards');
+                }
+                const data = await response.json();
+
+                // Update our page with the cards we got
+                setGiftCards(data);
+            } catch (error) {
+                console.error('Error loading gift cards:', error);
+                // We could show an error message to the user here
+            }
+        }
+
+        // Run our function
+        loadGiftCards();
+    }, [userId]);
 
     // Add this with your other handler functions
     const handleEditCard = (card: GiftCard) => {

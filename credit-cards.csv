@@ -1,0 +1,125 @@
+﻿Issuer,Card Name,Business/Personal,Annual Fee,Annual/Monthly Credits,Annual Free Nights or Points Bonus
+AmEx,AmEx Platinum Card for Schwab,Personal,$695 ,"$200 Airline Fee (Annual), $240 Digital Entertainment ($20/month), $200 Uber Cash ($15/month, $35 in December), $100 Saks Credit ($50 Semi-Annual), $200 Hotel Credit (Annual), $300 Equinox ($25/month)",None
+AmEx,AmEx Schwab Investor Credit Card,Personal,$0 ,None,None
+AmEx,AmEx Green Card,Personal,$150 ,"$189 Clear Credit (Annual), $100 LoungeBuddy Credit (Annual)",None
+AmEx,AmEx EveryDay (ED) Credit Card,Personal,$0 ,None,None
+AmEx,AmEx Hilton Aspire Credit Card,Personal,$550 ,"$200 Airline Fee (Annual), $400 Hilton Resort Credit ($200 Semi-Annual), $189 Clear Credit (Annual)","1 Free Night, 150,000 Points Bonus (if spending threshold met)"
+AmEx,AmEx Hilton Surpass Credit Card,Personal,$150 ,$50 Hilton Statement Credit (Quarterly),1 Free Night (if spending threshold met)
+AmEx,AmEx Hilton Credit Card,Personal,$0 ,None,None
+Delta,Delta SkyMiles® Gold Card from American Express,Personal,$150 ,$100 Delta Flight Credit (if spending threshold met),None
+Delta,Delta SkyMiles® Platinum Card from American Express,Personal,$350 ,$150 Delta Stays Credit (Annual),"10,000 MQM Bonus (if spending threshold met)"
+Delta,Delta SkyMiles® Reserve Card from American Express,Personal,$650 ,$200 Delta Stays Credit (Annual),Companion Certificate (Annual)
+AmEx,AmEx Marriott Bonvoy Brilliant Credit Card,Personal,$650 ,$300 Dining Credit ($25/month),1 Free Night (85k Points)
+AmEx,AmEx Marriott Bonvoy Bevy Credit Card,Personal,$250 ,None,"1 Free Night (50k Points, if spending threshold met)"
+AmEx,AmEx Gold Card,Personal,$250 ,"$120 Uber Cash ($10/month), $120 Dining Credit ($10/month)",None
+AmEx,AmEx Platinum Card,Personal,$695 ,"$200 Airline Fee (Annual), $240 Digital Entertainment ($20/month), $200 Uber Cash ($15/month, $35 in December), $100 Saks Credit ($50 Semi-Annual), $200 Hotel Credit (Annual), $300 Equinox ($25/month)",None
+AmEx,AmEx Platinum Card for Morgan Stanley,Personal,$695 ,Same as AmEx Platinum,None
+AmEx,AmEx Blue Cash Everyday (BCE) Credit Card,Personal,$0 ,"$15 Home Chef ($5/month), $84 Disney+ Bundle ($7/month)",None
+AmEx,AmEx Blue Cash Preferred (BCP) Credit Card,Personal,$95 ,"$120 Equinox+ ($10/month), $84 Disney+ Bundle ($7/month)",None
+AmEx,AmEx EveryDay Preferred (EDP) Credit Card,Personal,$95 ,None,None
+AmEx,AmEx Cash Magnet Credit Card,Personal,$0 ,None,None
+Delta,Delta SkyMiles® Blue Card from American Express,Personal,$0 ,None,None
+AmEx,AmEx Marriott Bonvoy Credit Card,Personal,Discontinued,None,None
+AmEx,AmEx Platinum Card for Goldman Sachs,Personal,$695 ,Same as AmEx Platinum,None
+AmEx,AmEx Centurion Card,Personal,Invite Only,Various luxury benefits,None
+AmEx,AmEx Plenti Credit Card (Discontinued),Personal,Discontinued,None,None
+AmEx,AmEx Business Platinum Card,Business,$695 ,"$400 Dell ($200 Semi-Annual), $360 Indeed ($90/qtr), $150 Adobe ($12.50/month), $120 Wireless ($10/month), $200 Airline Fee (Annual), $189 Clear Credit (Annual), $100 Saks Credit ($50 Semi-Annual)",None
+AmEx,AmEx Business Gold Card,Business,$375 ,"$240 FedEx, Grubhub, Dell ($20/month)",None
+AmEx,AmEx Business Green Rewards Card,Business,$95 ,None,None
+AmEx,AmEx Blue Business Plus Credit Card,Business,$0 ,None,None
+AmEx,AmEx Blue Business Cash Credit Card,Business,$0 ,None,None
+AmEx,AmEx Marriott Bonvoy Business Credit Card,Business,$125 ,None,1 Free Night (35k Points)
+AmEx,AmEx Delta SkyMiles® Gold Business Card,Business,$150 ,$150 Delta Stays Credit (Annual),None
+AmEx,AmEx Delta SkyMiles® Platinum Business Card,Business,$350 ,$200 Delta Stays Credit (Annual),Companion Certificate (Annual)
+AmEx,AmEx Delta SkyMiles® Reserve Business Card,Business,$650 ,$250 Delta Stays Credit (Annual),Companion Certificate (Annual)
+AmEx,AmEx Hilton Honors Business Card,Business,$95 ,None,1 Free Night (if spending threshold met)
+IHG,IHG One Rewards Premier Credit Card,Personal,$99 ,None,1 Free Night (Up to 40k Points)
+IHG,IHG One Rewards Traveler Credit Card,Personal,$0 ,None,None
+Marriott,Marriott Bonvoy Boundless® Credit Card,Personal,$95 ,None,1 Free Night (Up to 35k Points)
+World,World of Hyatt Credit Card,Personal,$95 ,None,1 Free Night
+Chase,Chase Freedom Unlimited® (CFU),Personal,$0 ,None,None
+United,United Club℠ Infinite Card,Personal,$525 ,$75 United Credit (Annual),None
+Chase,Chase Sapphire Preferred® Card,Personal,$95 ,$50 Hotel Credit (Annual),None
+Chase,Chase Sapphire Reserve®,Personal,$550 ,"$300 Travel Credit (Annual), Priority Pass Lounge Access",None
+Chase,Chase Freedom Flex℠,Personal,$0 ,None,None
+Chase,Chase Freedom Student Credit Card,Personal,$0 ,None,None
+Chase,Chase Slate Edge℠,Personal,$0 ,None,None
+Chase,Chase Amazon Prime Rewards Visa Signature Card,Personal,$0 ,None,None
+Chase,Chase Disney® Premier Visa® Card,Personal,$49 ,$300 Disney Statement Credit (if spending threshold met),None
+Chase,Chase Southwest Rapid Rewards® Plus Credit Card,Personal,$69 ,None,"3,000 Anniversary Points"
+Chase,Chase Southwest Rapid Rewards® Premier Credit Card,Personal,$99 ,None,"6,000 Anniversary Points"
+Chase,Chase Southwest Rapid Rewards® Priority Credit Card,Personal,$149 ,$75 Southwest Travel Credit (Annual),"7,500 Anniversary Points"
+Chase,Chase United℠ Explorer Card,Personal,$95 ,$100 United Travel Credit (if spending threshold met),2 United Club Passes (Annual)
+Chase,Chase United Quest℠ Card,Personal,$250 ,$125 United Purchase Credit (Annual),"5,000 MileagePlus Miles (if spending threshold met)"
+Chase,Chase United Gateway℠ Card,Personal,$0 ,None,None
+Chase,Chase Aeroplan® Credit Card,Personal,$95 ,$100 Statement Credit (if spending threshold met),25K Status Boost (if spending threshold met)
+Chase,Chase British Airways Visa Signature® Card,Personal,$95 ,$100 Reward Flight Credit (if spending threshold met),None
+Chase,Chase Iberia Visa Signature® Card,Personal,$95 ,$100 Iberia Flight Credit (if spending threshold met),None
+Chase,Chase Aer Lingus Visa Signature® Card,Personal,$95 ,$100 Aer Lingus Credit (if spending threshold met),None
+Chase,Chase Starbucks® Rewards Visa® Card,Personal,$49 ,None,"4,500 Bonus Stars (if spending threshold met)"
+Chase,Chase Marriott Bonvoy Bold® Credit Card,Personal,$0 ,None,None
+Chase,Chase Ritz-Carlton™ Credit Card,Personal,$450 ,$300 Airline Fee Credit (Annual),1 Free Night (Up to 85k Points)
+Chase,Chase AARP® Credit Card,Personal,$0 ,None,None
+Chase,Chase Slate® Credit Card (Discontinued),Personal,Discontinued,None,None
+Chase,Chase Ink Business Preferred® Credit Card,Business,$95 ,None,None
+Chase,Chase Ink Business Cash® Credit Card,Business,$0 ,None,None
+Chase,Chase Ink Business Unlimited® Credit Card,Business,$0 ,None,None
+Chase,Chase Southwest Rapid Rewards® Premier Business Credit Card,Business,$99 ,None,"6,000 Anniversary Points"
+Chase,Chase Southwest Rapid Rewards® Performance Business Credit Card,Business,$199 ,$100 Global Entry/TSA PreCheck Credit (Every 4 Years),"9,000 Anniversary Points"
+Chase,Chase United℠ Business Card,Business,$99 ,$100 United Travel Credit (if spending threshold met),2 United Club Passes (Annual)
+Chase,Chase IHG® One Rewards Premier Business Credit Card,Business,$99 ,None,1 Free Night (Up to 40k Points)
+Chase,Chase World of Hyatt Business Credit Card,Business,$199 ,None,1 Free Night (if spending threshold met)
+Chase,Chase Marriott Bonvoy Business® Credit Card,Business,$125 ,None,1 Free Night (Up to 35k Points)
+Citi,Citi Premier® Card,Personal,$95 ,$100 Hotel Credit (Annual),None
+Citi,Citi Rewards+® Card,Personal,$0 ,None,10% Points Rebate (Up to 100k Points Annually)
+Citi®,Citi® Double Cash Card,Personal,$0 ,None,None
+Citi®,Citi® Diamond Preferred® Card,Personal,$0 ,None,None
+Citi,Citi Simplicity® Card,Personal,$0 ,None,None
+Citi,Citi Custom Cash℠ Card,Personal,$0 ,None,None
+Citi®,Citi® / AAdvantage® Platinum Select® World Elite™ Mastercard®,Personal,$99 ,$125 American Airlines Flight Discount (if spending threshold met),None
+Citi®,Citi® / AAdvantage® Executive World Elite™ Mastercard®,Personal,$595 ,Admirals Club Lounge Access,10K Loyalty Points Bonus (if spending threshold met)
+Citi®,Citi® / AAdvantage® MileUp® Card,Personal,$0 ,None,None
+Citi®,Citi® Secured Mastercard®,Personal,$0 ,None,None
+Citi®,Citi® Costco Anywhere Visa® Card,Personal,$0 ,None,None
+Citi®,Citi® Costco Anywhere Visa® Business Card,Business,$0 ,None,None
+CitiBusiness®,CitiBusiness® / AAdvantage® Platinum Select® Mastercard®,Business,$99 ,$99 American Airlines Flight Discount (if spending threshold met),None
+Citi®,Citi® Expedia® Rewards Card,Personal,Discontinued,None,None
+Citi®,Citi® Expedia® Rewards Voyager Card,Personal,Discontinued,None,None
+Citi®,Citi® AT&T Access Card,Personal,Discontinued,None,None
+Citi®,Citi® AT&T Access More Card,Personal,Discontinued,None,None
+Barclays,Barclays AAdvantage® Aviator® Red World Elite Mastercard®,Personal,$99 ,$25 Inflight Wi-Fi Credit (Annual),Companion Certificate (After $20k Spend)
+Barclays,Barclays AAdvantage® Aviator® Silver World Elite Mastercard®,Personal,$199 ,$50 Inflight Wi-Fi Credit (Annual),Companion Certificate (After $20k Spend)
+Barclays,Barclays AAdvantage® Aviator® Blue Mastercard®,Personal,$49 ,None,None
+Barclays,Barclays AAdvantage® Aviator® Business Mastercard®,Business,$95 ,$25 Inflight Wi-Fi Credit (Annual),Companion Certificate (After $30k Spend)
+Barclays,Barclays JetBlue Plus Card,Personal,$99 ,$100 JetBlue Vacation Credit (Annual),"5,000 Anniversary Bonus Points"
+Barclays,Barclays JetBlue Card,Personal,$0 ,None,None
+Barclays,Barclays JetBlue Business Card,Business,$99 ,$100 JetBlue Vacation Credit (Annual),"5,000 Anniversary Bonus Points"
+Barclays,Barclays Wyndham Rewards Earner® Card,Personal,$0 ,None,None
+Barclays,Barclays Wyndham Rewards Earner® Plus Card,Personal,$75 ,None,"7,500 Anniversary Bonus Points"
+Barclays,Barclays Wyndham Rewards Earner® Business Card,Business,$95 ,None,"15,000 Anniversary Bonus Points"
+Barclays,Barclays Hawaiian Airlines® World Elite Mastercard®,Personal,$99 ,$100 Companion Discount (Annual),None
+Barclays,Barclays Choice Privileges® Visa Signature® Card,Personal,$95 ,None,"30,000 Anniversary Bonus Points"
+Barclays,Barclays Lufthansa Miles & More® World Elite Mastercard®,Personal,$89 ,None,15% Miles Discount on Award Flights
+Discover,Discover it® Cash Back,Personal,$0 ,None,None
+Discover,Discover it® Miles,Personal,$0 ,None,First-Year Miles Match
+Discover,Discover it® Chrome,Personal,$0 ,None,None
+Discover,Discover it® Secured,Personal,$0 ,None,None
+Discover,Discover it® Student Cash Back,Personal,$0 ,None,None
+Discover,Discover it® Student Chrome,Personal,$0 ,None,None
+Wells,Wells Fargo Active Cash® Card,Personal,$0 ,None,None
+Wells,Wells Fargo Reflect® Card,Personal,$0 ,None,None
+Wells,Wells Fargo Autograph℠ Card,Personal,$0 ,None,None
+Wells,Wells Fargo Propel American Express® Card (Discontinued),Personal,$0 ,None,None
+BoA,BoA Premium Rewards® Credit Card,Personal,$95 ,$100 Airline Incidentals Credit (Annual),None
+BoA,BoA Travel Rewards® Credit Card,Personal,$0 ,None,None
+BoA,BoA Customized Cash Rewards® Credit Card,Personal,$0 ,None,None
+BoA,BoA Unlimited Cash Rewards® Credit Card,Personal,$0 ,None,None
+BoA,BoA BankAmericard® Credit Card,Personal,$0 ,None,None
+BoA,BoA Alaska Airlines Visa® Credit Card,Personal,$95 ,$100 Companion Fare (Annual),None
+BoA,BoA Alaska Airlines Visa® Business Credit Card,Business,$95 ,$100 Companion Fare (Annual),None
+BoA,BoA Amtrak Guest Rewards® World Mastercard®,Personal,$79 ,None,"1,000 Anniversary Bonus Points"
+BoA,BoA Spirit Airlines World Mastercard®,Personal,$79 ,None,None
+BoA,BoA Norwegian Cruise Line® World Mastercard®,Personal,$0 ,None,None
+BoA,BoA Business Advantage Unlimited Cash Rewards Credit Card,Business,$0 ,None,None
+BoA,BoA Business Advantage Customized Cash Rewards Credit Card,Business,$0 ,None,None
+BoA,BoA Business Advantage Travel Rewards Credit Card,Business,$0 ,None,None
