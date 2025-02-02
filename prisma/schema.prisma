@@ -43,18 +43,29 @@ model GiftCard {
   // This helps our database look up gift cards quickly
   @@index([userId])
 
-model CreditCard {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  cardName      String
-  issuer        String
-  annualFee     Float
-  nextFeeDate   DateTime?
-  rewardsType   String
-  baseRate      Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model LibraryCard {
+  id                Int      @id @default(autoincrement())
+  issuer           String   
+  name             String   
+  businessOrPersonal String
+  annualFee        String
+  credits          String
+  bonuses          Json
+  rewardsType      String   // "points" or "cashback"
+  rewardsProgram   String?  // optional field for program name
+  defaultPointValue Float?   // optional field for point value
+}
+
+model UserCard {
+  id                Int      @id @default(autoincrement())
+  userId           String   // Changed to String to match Clerk IDs
+  issuer           String
+  name             String
+  businessOrPersonal String
+  annualFee        String
+  credits          String
+  bonuses          Json
+  user             User     @relation(fields: [userId], references: [id])
 }
 
 // In prisma/schema.prisma

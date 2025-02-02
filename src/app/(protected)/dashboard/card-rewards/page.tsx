@@ -14,8 +14,8 @@ import { useAuth } from '@clerk/nextjs';
 
 // Sample card database
 const cardDatabase = `AmEx
-AmEx Platinum Card for Schwab Review (2024.11 Update: 125k Offer!)
-AmEx Schwab Investor Credit Card Review (2024.11 Update: $300 Offer)
+AmEx Platinum Card for Schwab 
+AmEx Schwab Investor Credit Card 
 ...`;  // Rest of the database
 
 interface CreditCardData {
@@ -51,23 +51,28 @@ interface PresetCard {
     issuer: string;
 }
 
-// Helper function to parse card names from the database
-const parseCardDatabase = (): PresetCard[] => {
-    return cardDatabase
-        .split('\n')
-        .filter(line => line.includes('Review'))
-        .map(line => {
-            const name = line.split('Review')[0].trim();
-            // Extract issuer (first word usually)
-            const issuer = name.split(' ')[0];
-            return {
-                name,
-                issuer
-            };
-        });
-};
-
 const RewardsPage = () => {
+    // Move useState hooks inside the component
+    const [isLoading, setIsLoading] = useState(true);
+    const [creditCards, setCreditCards] = useState<CreditCardData[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>("");
+    const { userId } = useAuth();
+
+    // Helper function to parse card names from the database
+    const parseCardDatabase = (): PresetCard[] => {
+        return cardDatabase
+            .split('\n')
+            .filter(line => line.includes('Review'))
+            .map(line => {
+                const name = line.split('Review')[0].trim();
+                // Extract issuer (first word usually)
+                const issuer = name.split(' ')[0];
+                return {
+                    name,
+                    issuer
+                };
+            });
+    };
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
     const [addCardMode, setAddCardMode] = useState<'preset' | 'custom'>('preset');
     const [searchTerm, setSearchTerm] = useState('');
@@ -91,51 +96,38 @@ const RewardsPage = () => {
         baseRate: 1,
         type: 'personal' as 'personal' | 'business'
     });
-    const [selectedCategory, setSelectedCategory] = useState<string>("");
-
-    const [creditCards, setCreditCards] = useState<CreditCardData[]>([]);
-    const { userId } = useAuth();
-
-    useEffect(() => {
-        async function loadCreditCards() {
-            if (!userId) return;
-            try {
-                const response = await fetch(`/api/creditcards?userId=${userId}`);
-                const data = await response.json();
-                setCreditCards(data);
-            } catch (error) {
-                console.error('Error loading credit cards:', error);
-            }
-        }
-
-        loadCreditCards();
-    }, [userId]);
-
     // Calculate summary statistics
-    const totalAnnualFees = creditCards.reduce((sum, card) => sum + card.annualFee, 0);
-    const nextFeeCard = creditCards.length > 0 ? creditCards.reduce((closest, card) => {
-        if (!closest || !closest.nextFeeDate) return card;
-        if (!card.nextFeeDate) return closest;
-        return new Date(card.nextFeeDate) < new Date(closest.nextFeeDate) ? card : closest;
-    }, creditCards[0]) : null;
+    const totalAnnualFees = Array.isArray(creditCards) ?
+        creditCards.reduce((sum, card) => sum + card.annualFee, 0) : 0;
+    const nextFeeCard = Array.isArray(creditCards) && creditCards.length > 0 ?
+        creditCards.reduce((closest, card) => {
+            if (!closest || !closest.nextFeeDate) return card;
+            if (!card.nextFeeDate) return closest;
+            return new Date(card.nextFeeDate) < new Date(closest.nextFeeDate) ? card : closest;
+        }, creditCards[0]) : null;
 
-    const totalCredits = creditCards.reduce((sum, card) =>
-        sum + card.credits.reduce((creditsSum, credit) => creditsSum + credit.amount, 0), 0);
-    const usedCredits = creditCards.reduce((sum, card) =>
-        sum + card.credits.reduce((creditsSum, credit) => creditsSum + credit.used, 0), 0);
+    const totalCredits = Array.isArray(creditCards) ?
+        creditCards.reduce((sum, card) =>
+            sum + card.credits.reduce((creditsSum, credit) => creditsSum + credit.amount, 0), 0) : 0;
+    const usedCredits = Array.isArray(creditCards) ?
+        creditCards.reduce((sum, card) =>
+            sum + card.credits.reduce((creditsSum, credit) => creditsSum + credit.used, 0), 0) : 0;
 
-    const aprs = creditCards
-        .filter(card => card.apr && !isNaN(parseFloat(card.apr)))
-        .map(card => parseFloat(card.apr));
+    const aprs = Array.isArray(creditCards) ?
+        creditCards
+            .filter(card => card.apr && !isNaN(parseFloat(card.apr)))
+            .map(card => parseFloat(card.apr)) : [];
     const lowestAPR = aprs.length > 0 ? Math.min(...aprs) : 0;
     const highestAPR = aprs.length > 0 ? Math.max(...aprs) : 0;
 
     // Get all unique categories for the optimizer
-    const allCategories = Array.from(new Set(
-        creditCards.flatMap(card =>
-            (card.bonusCategories || []).map(bonus => bonus.category)
-        )
-    ));
+    const allCategories = Array.isArray(creditCards) ?
+        Array.from(new Set(
+            creditCards.flatMap(card =>
+                (card.bonusCategories || []).map(bonus => bonus.category)
+            )
+        )) : [];
+
     const progressValue = totalCredits > 0 ? (usedCredits / totalCredits) * 100 : 0;
     const getBestCardForCategory = (category: string) => {
         return creditCards.reduce((best, card) => {
@@ -148,66 +140,93 @@ const RewardsPage = () => {
         }, null as CreditCardData | null);
     };
 
+    useEffect(() => {
+        async function loadCreditCards() {
+            if (!userId) return;
+            setIsLoading(true);  // Start loading
+            try {
+                const response = await fetch(`/api/creditcards?userId=${userId}`);
+                const data = await response.json();
+                setCreditCards(data);
+            } catch (error) {
+                console.error('Error loading credit cards:', error);
+            } finally {
+                setIsLoading(false);  // End loading
+            }
+        }
+
+        loadCreditCards();
+    }, [userId]);
+
     return (
         <div className="p-6 space-y-6">
-            {/* Summary Statistics */}
-            <div className="grid grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center gap-2 text-2xl font-bold mb-1">
-                                {creditCards.length}
-                                <CreditCard className="h-5 w-5 text-muted-foreground" />
+            {isLoading ? (
+                <div className="text-center py-4">Loading credit cards...</div>
+            ) : (
+                <div className="grid grid-cols-4 gap-4">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="flex items-center gap-2 text-2xl font-bold mb-1">
+                                    {Array.isArray(creditCards) ? creditCards.length : 0}
+                                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">Active Cards</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {Array.isArray(creditCards) ?
+                                        creditCards.filter(card => card.type === 'business').length : 0} Business
+                                </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">Active Cards</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {creditCards.filter(card => card.type === 'business').length} Business
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
 
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">${totalAnnualFees}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {nextFeeCard && nextFeeCard.nextFeeDate ? (
-                                    <>Next: ${nextFeeCard.annualFee} in {
-                                        new Date(nextFeeCard.nextFeeDate).toLocaleDateString('en-US', { month: 'short' })
-                                    }</>
-                                ) : (
-                                    'No upcoming fees'
-                                )}
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">
-                                ${usedCredits} <span className="text-sm text-muted-foreground">/ ${totalCredits}</span>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="text-2xl font-bold mb-1">${totalAnnualFees}</div>
+                                <p className="text-sm text-muted-foreground">Annual Fees</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {nextFeeCard && nextFeeCard.nextFeeDate ? (
+                                        <>Next: ${nextFeeCard.annualFee} in {
+                                            new Date(nextFeeCard.nextFeeDate).toLocaleDateString('en-US', { month: 'short' })
+                                        }</>
+                                    ) : (
+                                        'No upcoming fees'
+                                    )}
+                                </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">Credits Used</p>
-                            <Progress
-                                value={progressValue}
-                                className="w-full h-2 mt-2"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
 
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">{lowestAPR}% - {highestAPR}%</div>
-                            <p className="text-sm text-muted-foreground">APR Range</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="text-2xl font-bold mb-1">
+                                    ${usedCredits} <span className="text-sm text-muted-foreground">/ ${totalCredits}</span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">Credits Used</p>
+                                <Progress
+                                    value={totalCredits > 0 ? (usedCredits / totalCredits) * 100 : 0}
+                                    className="w-full h-2 mt-2"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="text-2xl font-bold mb-1">
+                                    {lowestAPR === highestAPR ?
+                                        `${lowestAPR}%` :
+                                        `${lowestAPR}% - ${highestAPR}%`}
+                                </div>
+                                <p className="text-sm text-muted-foreground">APR Range</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Main Content */}
             <Card>
@@ -434,75 +453,80 @@ const RewardsPage = () => {
                         </TabsList>
 
                         <TabsContent value="all" className="space-y-4">
-                            {creditCards.map(card => (
-                                <Card key={card.id}>
-                                    <CardContent className="pt-6">
-                                        <div className="space-y-6">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="text-lg font-semibold">{card.name}</h3>
-                                                    <p className="text-sm text-muted-foreground">{card.issuer}</p>
-                                                </div>
-                                                <Button variant="outline" size="sm">
-                                                    Edit
-                                                </Button>
-                                            </div>
+                            {Array.isArray(creditCards) && creditCards.length > 0 ? (
+                                creditCards.map(card => (
 
-                                            {/* Rewards Structure */}
-                                            <div className="space-y-4">
-                                                <h4 className="font-medium">Rewards Structure</h4>
-                                                <div className="pl-4 border-l-2 border-primary/20 space-y-3">
-                                                    {/* Bonus Categories (sorted by rate) */}
-                                                    {[...card.bonusCategories]
-                                                        .sort((a, b) => b.rate - a.rate)
-                                                        .map((bonus, idx) => (
-                                                            <div key={idx} className="flex items-center gap-2 text-base">
-                                                                <span className="font-semibold">{bonus.rate}x</span>
-                                                                <span>{bonus.category}</span>
-                                                                {bonus.details && (
-                                                                    <span className="text-sm text-muted-foreground">
-                                                                        ({bonus.details})
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    {/* Base Rate */}
-                                                    <div className="flex items-center gap-2 text-base">
-                                                        <span className="font-semibold">{card.baseRewards.points}x</span>
-                                                        <span>All other purchases</span>
+                                    <Card key={card.id}>
+                                        <CardContent className="pt-6">
+                                            <div className="space-y-6">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold">{card.name}</h3>
+                                                        <p className="text-sm text-muted-foreground">{card.issuer}</p>
                                                     </div>
+                                                    <Button variant="outline" size="sm">
+                                                        Edit
+                                                    </Button>
                                                 </div>
-                                            </div>
 
-                                            {/* Credits */}
-                                            {card.credits.length > 0 && (
+                                                {/* Rewards Structure */}
                                                 <div className="space-y-4">
-                                                    <h4 className="font-medium">Credits & Benefits</h4>
-                                                    <div className="pl-4 border-l-2 border-primary/20 space-y-4">
-                                                        {card.credits.map((credit, idx) => (
-                                                            <div key={idx} className="space-y-2">
-                                                                <div className="flex justify-between items-baseline">
-                                                                    <span className="font-medium">{credit.name}</span>
-                                                                    <span className="text-sm">
-                                                                        ${credit.used} / ${credit.amount}
-                                                                    </span>
+                                                    <h4 className="font-medium">Rewards Structure</h4>
+                                                    <div className="pl-4 border-l-2 border-primary/20 space-y-3">
+                                                        {/* Bonus Categories (sorted by rate) */}
+                                                        {[...card.bonusCategories]
+                                                            .sort((a, b) => b.rate - a.rate)
+                                                            .map((bonus, idx) => (
+                                                                <div key={idx} className="flex items-center gap-2 text-base">
+                                                                    <span className="font-semibold">{bonus.rate}x</span>
+                                                                    <span>{bonus.category}</span>
+                                                                    {bonus.details && (
+                                                                        <span className="text-sm text-muted-foreground">
+                                                                            ({bonus.details})
+                                                                        </span>
+                                                                    )}
                                                                 </div>
-                                                                <Progress
-                                                                    value={(credit.used / credit.amount) * 100}
-                                                                    className="h-2"
-                                                                />
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {credit.details}
-                                                                </p>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        {/* Base Rate */}
+                                                        <div className="flex items-center gap-2 text-base">
+                                                            <span className="font-semibold">{card.baseRewards.points}x</span>
+                                                            <span>All other purchases</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+
+                                                {/* Credits */}
+                                                {card.credits.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="font-medium">Credits & Benefits</h4>
+                                                        <div className="pl-4 border-l-2 border-primary/20 space-y-4">
+                                                            {card.credits.map((credit, idx) => (
+                                                                <div key={idx} className="space-y-2">
+                                                                    <div className="flex justify-between items-baseline">
+                                                                        <span className="font-medium">{credit.name}</span>
+                                                                        <span className="text-sm">
+                                                                            ${credit.used} / ${credit.amount}
+                                                                        </span>
+                                                                    </div>
+                                                                    <Progress
+                                                                        value={(credit.used / credit.amount) * 100}
+                                                                        className="h-2"
+                                                                    />
+                                                                    <p className="text-sm text-muted-foreground">
+                                                                        {credit.details}
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <div className="text-center py-4">No credit cards found</div>
+                            )}
                         </TabsContent>
                     </Tabs>
                 </CardContent>

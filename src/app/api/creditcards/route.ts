@@ -1,3 +1,4 @@
+// app/api/creditcards/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
@@ -13,7 +14,8 @@ export async function GET(request: Request) {
     }
 
     try {
-        const creditCards = await prisma.creditCards.findMany({
+        // Notice "creditCard" instead of "creditCards"
+        const creditCards = await prisma.creditCard.findMany({
             where: {
                 userId: userId
             },
@@ -24,9 +26,9 @@ export async function GET(request: Request) {
 
         return NextResponse.json(creditCards);
     } catch (error) {
-        console.error('Error fetching gift cards:', error);
+        console.error('Error fetching credit cards:', error);
         return NextResponse.json(
-            { error: 'Error fetching gift cards' },
+            { error: 'Error fetching credit cards' },
             { status: 500 }
         );
     }
