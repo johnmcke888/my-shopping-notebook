@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     AlertCircle, ArrowUpCircle, Circle, MinusCircle,
     Plus, ExternalLink, Star, Store, CreditCard,
-    ChevronRight, Clock, Link, MessageSquare, Bookmark
+    ChevronRight, Clock, Link, MessageSquare, Bookmark, X
 } from 'lucide-react';
 
 // Core types
@@ -109,7 +109,7 @@ const PurchasePlannerMockup: React.FC = () => {
         }
     ]);
 
-    const [selectedItemId, setSelectedItemId] = useState<string>('1');
+    const [selectedItemId, setSelectedItemId] = useState<string | null>('1');
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'shortlist' | 'rejected'>('all');
     const [showProductModal, setShowProductModal] = useState(false);
@@ -136,6 +136,7 @@ const PurchasePlannerMockup: React.FC = () => {
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [itemToAction, setItemToAction] = useState<string | null>(null);
+    const [showRemoveConfirmModal, setShowRemoveConfirmModal] = useState(false);
     const [newMerchant, setNewMerchant] = useState({
         name: '',
         price: 0,
@@ -190,7 +191,8 @@ const PurchasePlannerMockup: React.FC = () => {
                             min: newNeed.targetPrice.max,
                             max: newNeed.targetPrice.max
                         },
-                        notes: newNeed.notes
+                        notes: newNeed.notes,
+                        status: item.status // Preserve existing status
                     }
                     : item
             ));
@@ -207,7 +209,7 @@ const PurchasePlannerMockup: React.FC = () => {
                 },
                 notes: newNeed.notes,
                 options: [],
-                status: 'active'
+                status: 'active' // Ensure new items always have 'active' status
             };
             setItems([...items, newItem]);
             setSelectedItemId(newItem.id);
@@ -237,6 +239,31 @@ const PurchasePlannerMockup: React.FC = () => {
                     return { ...opt, status: newStatus };
                 })
             };
+        }));
+    };
+
+    const handleRemoveMerchant = (optionId: string, merchantId: string) => {
+        setItems(prevItems => prevItems.map(item => {
+            if (item.id !== selectedItem?.id) return item;
+
+            const updatedOptions = item.options.map(opt => {
+                if (opt.id !== optionId) return opt;
+
+                // Remove the merchant and recalculate best value
+                const updatedMerchants = opt.merchants.filter(m => m.id !== merchantId);
+                if (updatedMerchants.length === 0) return { ...opt, merchants: [] };
+
+                const lowestPrice = Math.min(...updatedMerchants.map(m => m.netPrice));
+                return {
+                    ...opt,
+                    merchants: updatedMerchants.map(m => ({
+                        ...m,
+                        bestValue: m.netPrice === lowestPrice
+                    }))
+                };
+            });
+
+            return { ...item, options: updatedOptions };
         }));
     };
 
@@ -445,33 +472,57 @@ const PurchasePlannerMockup: React.FC = () => {
                     </div>
                     <ScrollArea className="h-[calc(100vh-5rem)]">
                         <div className="p-2 space-y-4">
-                            {Object.entries(itemsByPriority).map(([priority, priorityItems]) => (
-                                <div key={priority} className={`space-y-1`}>
-                                    <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
-                                        {priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                        {priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                        {priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                        {priority}
+                            <div className="space-y-6">
+                                {/* Active Plans */}
+                                {Object.entries(itemsByPriority).map(([priority, priorityItems]) => (
+                                    <div key={priority} className={`space-y-1`}>
+                                        <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
+                                            {priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                                            {priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
+                                            {priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                            {priority}
+                                        </div>
+                                        {priorityItems
+                                            .filter(item => !item.status || item.status === 'active')
+                                            .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                            .map(item => (
+                                                <div
+                                                    key={item.id}
+                                                    className={`px-2 py-1.5 rounded-md text-sm cursor-pointer
+                                                    ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`}
+                                                    onClick={() => handleSelectItem(item.id)}
+                                                >
+                                                    {item.name}
+                                                </div>
+                                            ))}
                                     </div>
-                                    {priorityItems
+                                ))}
+
+                                {/* Archived Plans */}
+                                <div className="mt-8">
+                                    <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
+                                        <Bookmark className="h-4 w-4 text-gray-500" />
+                                        Archived Plans
+                                    </div>
+                                    {items
+                                        .filter(item => item.status === 'archived')
                                         .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                         .map(item => (
                                             <div
                                                 key={item.id}
-                                                className={`px-2 py-1.5 rounded-md text-sm cursor-pointer
-                                                ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`}
+                                                className="px-2 py-1.5 rounded-md text-sm cursor-pointer text-gray-500 hover:bg-gray-100"
                                                 onClick={() => handleSelectItem(item.id)}
                                             >
                                                 {item.name}
                                             </div>
                                         ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     </ScrollArea>
                 </div>
                 {/* Product Analysis Panel */}
-                <div className="flex-1 max-w-4xl border-r bg-white">
+                <div className="flex-1 border-r bg-white">
                     {selectedItem ? (
                         <>
                             <div className="p-4 border-b">
@@ -495,17 +546,36 @@ const PurchasePlannerMockup: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                // We'll implement archive functionality next
-                                                console.log('Archive clicked:', selectedItem.id);
-                                            }}
-                                        >
-                                            <Bookmark className="h-4 w-4 mr-2" />
-                                            Archive Plan
-                                        </Button>
+                                        {selectedItem?.status === 'archived' ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (!selectedItem) return;
+                                                    setItems(prevItems => prevItems.map(item =>
+                                                        item.id === selectedItem.id
+                                                            ? { ...item, status: 'active' }
+                                                            : item
+                                                    ));
+                                                }}
+                                            >
+                                                <ArrowUpCircle className="h-4 w-4 mr-2" />
+                                                Reactivate Plan
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (!selectedItem) return;
+                                                    setItemToAction(selectedItem.id);
+                                                    setShowArchiveConfirm(true);
+                                                }}
+                                            >
+                                                <Bookmark className="h-4 w-4 mr-2" />
+                                                Archive Plan
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -605,7 +675,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                                                         variant="outline"
                                                                         className="w-28"
                                                                         onClick={() => {
-                                                                            setEditingOptionId(option.id);
+                                                                            setEditingOptionId(option.id);  // This is crucial - we need to know which option we're adding to
                                                                             setShowMerchantModal(true);
                                                                         }}
                                                                     >
@@ -632,7 +702,11 @@ const PurchasePlannerMockup: React.FC = () => {
                                                                         size="sm"
                                                                         variant="outline"
                                                                         className="w-28"
-                                                                        onClick={() => handleRemoveOption(selectedItem.id, option.id)}
+                                                                        onClick={() => {
+                                                                            // Show confirmation modal
+                                                                            setEditingOptionId(option.id);
+                                                                            setShowRemoveConfirmModal(true);
+                                                                        }}
                                                                     >
                                                                         Remove
                                                                     </Button>
@@ -680,49 +754,62 @@ const PurchasePlannerMockup: React.FC = () => {
                                                                 <span className="text-gray-500">→ ${merchant.price}</span>
                                                                 <span className="text-green-600 font-medium">→ ${merchant.netPrice}</span>
                                                             </div>
-                                                        </div>
-                                                        {merchant.bestValue && (
-                                                            <Badge className="bg-green-100 text-green-800">Best Value</Badge>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        {merchant.rewards.map((reward, i) => (
-                                                            <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                                                                {reward.type === 'store' ? (
-                                                                    <Store className="h-4 w-4" />
-                                                                ) : (
-                                                                    <CreditCard className="h-4 w-4" />
+                                                            <div className="flex items-center gap-2">
+                                                                {merchant.bestValue && (
+                                                                    <Badge className="bg-green-100 text-green-800">Best Value</Badge>
                                                                 )}
-                                                                {reward.value} {reward.name}
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (confirm('Remove this merchant option?')) {
+                                                                            handleRemoveMerchant(selectedOption.id, merchant.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                            <div className="space-y-2">
+                                                                {merchant.rewards.map((reward, i) => (
+                                                                    <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                                                                        {reward.type === 'store' ? (
+                                                                            <Store className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <CreditCard className="h-4 w-4" />
+                                                                        )}
+                                                                        {reward.value} {reward.name}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
 
-                                                    <div className="text-sm text-gray-500">
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="h-4 w-4" />
-                                                            Free Shipping
+                                                            <div className="text-sm text-gray-500">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Clock className="h-4 w-4" />
+                                                                    Free Shipping
+                                                                </div>
+                                                                {merchant.notes && (
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <AlertCircle className="h-4 w-4" />
+                                                                        {merchant.notes}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {merchant.bestValue && (
+                                                                <Button
+                                                                    className="w-full bg-gray-900 hover:bg-gray-800"
+                                                                    onClick={() => {
+                                                                        console.log('Marked as purchased from:', merchant.name);
+                                                                    }}
+                                                                >
+                                                                    Mark Purchased
+                                                                </Button>
+                                                            )}
                                                         </div>
-                                                        {merchant.notes && (
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <AlertCircle className="h-4 w-4" />
-                                                                {merchant.notes}
-                                                            </div>
-                                                        )}
                                                     </div>
-
-                                                    {merchant.bestValue && (
-                                                        <Button
-                                                            className="w-full bg-gray-900 hover:bg-gray-800"
-                                                            onClick={() => {
-                                                                // Here you'd implement purchase tracking logic
-                                                                console.log('Marked as purchased from:', merchant.name);
-                                                            }}
-                                                        >
-                                                            Mark Purchased
-                                                        </Button>
-                                                    )}
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -1007,7 +1094,8 @@ const PurchasePlannerMockup: React.FC = () => {
                     <DialogHeader>
                         <DialogTitle>
                             {editingItemId ? 'Edit Item' : 'Add New Item'}
-                        </DialogTitle>                    </DialogHeader>
+                        </DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <Label>Name</Label>
@@ -1078,45 +1166,33 @@ const PurchasePlannerMockup: React.FC = () => {
                             />
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="flex justify-end gap-2">
+                        <div className="flex justify-between pt-4">
+                            {editingItemId && (
                                 <Button
-                                    variant="outline"
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                     onClick={() => {
+                                        setItemToAction(editingItemId);
+                                        setShowDeleteConfirm(true);
                                         setShowNeedModal(false);
-                                        setNewNeed({
-                                            name: '',
-                                            priority: 'normal',
-                                            targetPrice: { min: 0, max: 0 },
-                                            notes: ''
-                                        });
                                     }}
                                 >
+                                    Delete Plan
+                                </Button>
+                            )}
+                            <div className="flex gap-2 ml-auto">
+                                <Button variant="outline" onClick={() => setShowNeedModal(false)}>
                                     Cancel
                                 </Button>
                                 <Button onClick={handleAddItem}>
                                     {editingItemId ? 'Save Changes' : 'Add Item'}
                                 </Button>
                             </div>
-                            {editingItemId && (
-                                <div className="flex justify-start pt-4 border-t">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() => {
-                                            // We'll implement delete functionality next
-                                            console.log('Delete clicked:', editingItemId);
-                                        }}
-                                    >
-                                        Delete Plan
-                                    </Button>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </DialogContent>
             </Dialog>
+
             {/* Archive Confirmation Modal */}
             <Dialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
                 <DialogContent className="sm:max-w-md">
@@ -1137,13 +1213,15 @@ const PurchasePlannerMockup: React.FC = () => {
                             </Button>
                             <Button
                                 onClick={() => {
-                                    setItems(items.map(item =>
+                                    if (!itemToAction) return;
+                                    setItems(prevItems => prevItems.map(item =>
                                         item.id === itemToAction
                                             ? { ...item, status: 'archived' }
                                             : item
                                     ));
                                     setShowArchiveConfirm(false);
                                     setItemToAction(null);
+                                    setSelectedItemId(null); // Clear selection after archiving
                                 }}
                             >
                                 Archive Plan
@@ -1174,10 +1252,10 @@ const PurchasePlannerMockup: React.FC = () => {
                             <Button
                                 variant="destructive"
                                 onClick={() => {
-                                    setItems(items.filter(item => item.id !== itemToAction));
+                                    if (!itemToAction) return;
+                                    setItems(prevItems => prevItems.filter(item => item.id !== itemToAction));
                                     setShowDeleteConfirm(false);
                                     setItemToAction(null);
-                                    setShowNeedModal(false);
                                 }}
                             >
                                 Delete Plan
@@ -1186,7 +1264,51 @@ const PurchasePlannerMockup: React.FC = () => {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div >
+            {/* Remove Option Confirmation Modal */}
+            <Dialog open={showRemoveConfirmModal} onOpenChange={setShowRemoveConfirmModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Remove Product Option</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p>Would you like to keep this option in your rejected list for future reference? This helps track what you've already considered and why it didn't work out.</p>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowRemoveConfirmModal(false);
+                                    setEditingOptionId(null);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => {
+                                    if (!selectedItem || !editingOptionId) return;
+                                    handleUpdateItemStatus(selectedItem.id, editingOptionId, 'rejected');
+                                    setShowRemoveConfirmModal(false);
+                                    setEditingOptionId(null);
+                                }}
+                            >
+                                Move to Rejected
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => {
+                                    if (!selectedItem || !editingOptionId) return;
+                                    handleRemoveOption(selectedItem.id, editingOptionId);
+                                    setShowRemoveConfirmModal(false);
+                                    setEditingOptionId(null);
+                                }}
+                            >
+                                Remove Completely
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 };
 
