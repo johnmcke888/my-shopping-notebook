@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     AlertCircle, ArrowUpCircle, Circle, MinusCircle,
     Plus, ExternalLink, Star, Store, CreditCard,
-    ChevronRight, Clock, Link, MessageSquare
+    ChevronRight, Clock, Link, MessageSquare, Bookmark
 } from 'lucide-react';
 
 // Core types
@@ -26,8 +26,10 @@ interface PurchaseItem {
         min: number;
         max: number;
     };
+    notes?: string;
     options: ProductOption[];
     selectedOption?: string;
+    status: 'active' | 'archived';  // This is what we added
 }
 
 interface ProductOption {
@@ -71,6 +73,7 @@ const PurchasePlannerMockup: React.FC = () => {
             name: 'Standing Desk',
             priority: 'high',
             targetPrice: { min: 500, max: 700 },
+            status: 'active',  // Add this line
             options: [
                 {
                     id: '1-1',
@@ -111,8 +114,18 @@ const PurchasePlannerMockup: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'all' | 'shortlist' | 'rejected'>('all');
     const [showProductModal, setShowProductModal] = useState(false);
     const [showMerchantModal, setShowMerchantModal] = useState(false);
+    const [showNeedModal, setShowNeedModal] = useState(false);
+    const [newNeed, setNewNeed] = useState({
+        name: '',
+        priority: 'normal' as 'high' | 'normal' | 'low',
+        targetPrice: {
+            min: 0,
+            max: 0
+        },
+        notes: ''
+    });
     const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
-
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [newProduct, setNewProduct] = useState({
         name: '',
         price: { msrp: 0, current: 0 },
@@ -120,7 +133,9 @@ const PurchasePlannerMockup: React.FC = () => {
         notes: '',
         reviews: [{ source: '', title: '', url: '' }]
     });
-
+    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [itemToAction, setItemToAction] = useState<string | null>(null);
     const [newMerchant, setNewMerchant] = useState({
         name: '',
         price: 0,
@@ -161,15 +176,51 @@ const PurchasePlannerMockup: React.FC = () => {
     };
     // Handler functions
     const handleAddItem = () => {
-        const newItem: PurchaseItem = {
-            id: `item-${Date.now()}`,
-            name: 'New Item',
+        if (!newNeed.name) return;
+
+        if (editingItemId) {
+            // Editing existing item
+            setItems(items.map(item =>
+                item.id === editingItemId
+                    ? {
+                        ...item,
+                        name: newNeed.name,
+                        priority: newNeed.priority,
+                        targetPrice: {
+                            min: newNeed.targetPrice.max,
+                            max: newNeed.targetPrice.max
+                        },
+                        notes: newNeed.notes
+                    }
+                    : item
+            ));
+            setEditingItemId(null);
+        } else {
+            // Adding new item
+            const newItem: PurchaseItem = {
+                id: `item-${Date.now()}`,
+                name: newNeed.name,
+                priority: newNeed.priority,
+                targetPrice: {
+                    min: newNeed.targetPrice.max,
+                    max: newNeed.targetPrice.max
+                },
+                notes: newNeed.notes,
+                options: [],
+                status: 'active'
+            };
+            setItems([...items, newItem]);
+            setSelectedItemId(newItem.id);
+        }
+
+        // Reset form and close modal
+        setShowNeedModal(false);
+        setNewNeed({
+            name: '',
             priority: 'normal',
-            targetPrice: { min: 0, max: 100 },
-            options: [],
-        };
-        setItems([...items, newItem]);
-        setSelectedItemId(newItem.id);
+            targetPrice: { min: 0, max: 0 },
+            notes: ''
+        });
     };
 
     const handleSelectItem = (id: string) => {
@@ -191,12 +242,16 @@ const PurchasePlannerMockup: React.FC = () => {
 
     const handleAddProductOption = () => {
         if (!selectedItem) return;
+        if (!newProduct.name) return;
 
         const newOption: ProductOption = {
             id: `option-${Date.now()}`,
             name: newProduct.name,
             image: '/api/placeholder/400/200',
-            price: newProduct.price,
+            price: {
+                msrp: Number(newProduct.price.msrp) || 0,
+                current: Number(newProduct.price.current) || 0
+            },
             specs: newProduct.specs.filter(Boolean),
             notes: newProduct.notes,
             reviews: newProduct.reviews.filter(r => r.source && r.title),
@@ -211,6 +266,8 @@ const PurchasePlannerMockup: React.FC = () => {
                 options: [...item.options, newOption]
             };
         }));
+
+        console.log('Updated items:', items); // Add this line
 
         setShowProductModal(false);
         setNewProduct({
@@ -275,6 +332,28 @@ const PurchasePlannerMockup: React.FC = () => {
                 options: item.options.filter(opt => opt.id !== optionId)
             };
         }));
+    };
+
+    const handleArchivePlan = () => {
+        if (!itemToAction) return;
+
+        setItems(items.map(item =>
+            item.id === itemToAction
+                ? { ...item, status: 'archived' }
+                : item
+        ));
+
+        setShowArchiveConfirm(false);
+        setItemToAction(null);
+    };
+
+    const handleDeletePlan = () => {
+        if (!itemToAction) return;
+
+        setItems(items.filter(item => item.id !== itemToAction));
+
+        setShowDeleteConfirm(false);
+        setItemToAction(null);
     };
 
     const formatCurrency = (amount: number) => {
@@ -347,12 +426,12 @@ const PurchasePlannerMockup: React.FC = () => {
                 <div className="w-60 border-r bg-white">
                     <div className="p-4 border-b">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold text-sm">Priority Items</h2>
+                            <h2 className="font-semibold text-sm">Purchase Plans</h2>
                             <Button
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 p-0"
-                                onClick={handleAddItem}
+                                onClick={() => setShowNeedModal(true)}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
@@ -399,21 +478,58 @@ const PurchasePlannerMockup: React.FC = () => {
                                 <div className="flex items-center justify-between mb-4">
                                     <div>
                                         <h2 className="font-semibold">{selectedItem.name}</h2>
-                                        <div className="text-sm text-gray-500 flex items-center gap-2">
-                                            {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                            {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                            {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                            {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority •
-                                            Target: {formatCurrency(selectedItem.targetPrice.min)}-{formatCurrency(selectedItem.targetPrice.max)}
+                                        <div className="space-y-2">
+                                            <div className="text-sm text-gray-500 flex items-center gap-2">
+                                                {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                                                {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
+                                                {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                                {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority •
+                                                Target: {formatCurrency(selectedItem.targetPrice.max)}
+                                            </div>
+                                            {selectedItem.notes && (
+                                                <div className="text-sm text-gray-600 flex items-start gap-2">
+                                                    <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
+                                                    <span>{selectedItem.notes}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <Button
-                                        size="sm"
-                                        onClick={() => setShowProductModal(true)}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Add Option
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                // We'll implement archive functionality next
+                                                console.log('Archive clicked:', selectedItem.id);
+                                            }}
+                                        >
+                                            <Bookmark className="h-4 w-4 mr-2" />
+                                            Archive Plan
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setEditingItemId(selectedItem.id);
+                                                setNewNeed({
+                                                    name: selectedItem.name,
+                                                    priority: selectedItem.priority,
+                                                    targetPrice: selectedItem.targetPrice,
+                                                    notes: selectedItem.notes || ''
+                                                });
+                                                setShowNeedModal(true);
+                                            }}
+                                        >
+                                            Edit Details
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setShowProductModal(true)}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            Add Option
+                                        </Button>
+                                    </div>
                                 </div>
                                 <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
                                     <TabsList>
@@ -483,7 +599,19 @@ const PurchasePlannerMockup: React.FC = () => {
                                                                 </div>
 
                                                                 {/* Action Buttons */}
-                                                                <div className="flex gap-2 mt-4">
+                                                                <div className="flex flex-wrap gap-2 mt-4">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="w-28"
+                                                                        onClick={() => {
+                                                                            setEditingOptionId(option.id);
+                                                                            setShowMerchantModal(true);
+                                                                        }}
+                                                                    >
+                                                                        <Store className="h-4 w-4 mr-2" />
+                                                                        Add Merchant
+                                                                    </Button>
                                                                     <Button
                                                                         size="sm"
                                                                         variant={option.status === 'shortlisted' ? 'default' : 'outline'}
@@ -633,10 +761,13 @@ const PurchasePlannerMockup: React.FC = () => {
                                 <Label>MSRP</Label>
                                 <Input
                                     type="number"
-                                    value={newProduct.price.msrp}
+                                    value={newProduct.price.msrp || ''}
                                     onChange={(e) => setNewProduct(prev => ({
                                         ...prev,
-                                        price: { ...prev.price, msrp: parseFloat(e.target.value) }
+                                        price: {
+                                            ...prev.price,
+                                            msrp: e.target.value === '' ? 0 : Number(e.target.value)
+                                        }
                                     }))}
                                 />
                             </div>
@@ -644,10 +775,13 @@ const PurchasePlannerMockup: React.FC = () => {
                                 <Label>Current Price</Label>
                                 <Input
                                     type="number"
-                                    value={newProduct.price.current}
+                                    value={newProduct.price.current || ''}
                                     onChange={(e) => setNewProduct(prev => ({
                                         ...prev,
-                                        price: { ...prev.price, current: parseFloat(e.target.value) }
+                                        price: {
+                                            ...prev.price,
+                                            current: e.target.value === '' ? 0 : Number(e.target.value)
+                                        }
                                     }))}
                                 />
                             </div>
@@ -867,7 +1001,192 @@ const PurchasePlannerMockup: React.FC = () => {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+            {/* Need Management Modal */}
+            <Dialog open={showNeedModal} onOpenChange={setShowNeedModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingItemId ? 'Edit Item' : 'Add New Item'}
+                        </DialogTitle>                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label>Name</Label>
+                            <Input
+                                value={newNeed.name}
+                                onChange={(e) => setNewNeed(prev => ({
+                                    ...prev,
+                                    name: e.target.value
+                                }))}
+                                placeholder="e.g., Standing Desk"
+                            />
+                        </div>
+
+                        <div>
+                            <Label>Priority</Label>
+                            <div className="flex gap-4 mt-2">
+                                <Button
+                                    variant={newNeed.priority === 'high' ? "default" : "outline"}
+                                    onClick={() => setNewNeed(prev => ({ ...prev, priority: 'high' }))}
+                                    className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 border-red-200"
+                                >
+                                    High
+                                </Button>
+                                <Button
+                                    variant={newNeed.priority === 'normal' ? "default" : "outline"}
+                                    onClick={() => setNewNeed(prev => ({ ...prev, priority: 'normal' }))}
+                                    className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-200"
+                                >
+                                    Normal
+                                </Button>
+                                <Button
+                                    variant={newNeed.priority === 'low' ? "default" : "outline"}
+                                    onClick={() => setNewNeed(prev => ({ ...prev, priority: 'low' }))}
+                                    className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-200"
+                                >
+                                    Low
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label>Target Budget</Label>
+                            <div className="mt-2">
+                                <Input
+                                    type="number"
+                                    placeholder="Maximum budget"
+                                    value={newNeed.targetPrice.max === 0 ? '' : newNeed.targetPrice.max}
+                                    onChange={(e) => setNewNeed(prev => ({
+                                        ...prev,
+                                        targetPrice: {
+                                            min: 0,
+                                            max: e.target.value === '' ? 0 : parseInt(e.target.value)
+                                        }
+                                    }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label>Notes (Optional)</Label>
+                            <Textarea
+                                value={newNeed.notes}
+                                onChange={(e) => setNewNeed(prev => ({
+                                    ...prev,
+                                    notes: e.target.value
+                                }))}
+                                placeholder="Add any additional context or requirements"
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowNeedModal(false);
+                                        setNewNeed({
+                                            name: '',
+                                            priority: 'normal',
+                                            targetPrice: { min: 0, max: 0 },
+                                            notes: ''
+                                        });
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleAddItem}>
+                                    {editingItemId ? 'Save Changes' : 'Add Item'}
+                                </Button>
+                            </div>
+                            {editingItemId && (
+                                <div className="flex justify-start pt-4 border-t">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => {
+                                            // We'll implement delete functionality next
+                                            console.log('Delete clicked:', editingItemId);
+                                        }}
+                                    >
+                                        Delete Plan
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            {/* Archive Confirmation Modal */}
+            <Dialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Archive Purchase Plan</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p>This plan will be moved to Archives for future reference. You can find it there if you need to revisit these options later.</p>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowArchiveConfirm(false);
+                                    setItemToAction(null);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setItems(items.map(item =>
+                                        item.id === itemToAction
+                                            ? { ...item, status: 'archived' }
+                                            : item
+                                    ));
+                                    setShowArchiveConfirm(false);
+                                    setItemToAction(null);
+                                }}
+                            >
+                                Archive Plan
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Delete Purchase Plan</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p className="text-red-600">This plan will be permanently deleted. This action cannot be undone.</p>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    setItemToAction(null);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => {
+                                    setItems(items.filter(item => item.id !== itemToAction));
+                                    setShowDeleteConfirm(false);
+                                    setItemToAction(null);
+                                    setShowNeedModal(false);
+                                }}
+                            >
+                                Delete Plan
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 };
 
