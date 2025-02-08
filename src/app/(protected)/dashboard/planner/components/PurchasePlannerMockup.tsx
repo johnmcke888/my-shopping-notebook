@@ -14,8 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     AlertCircle, ArrowUpCircle, Circle, MinusCircle,
     Plus, ExternalLink, Star, Store, CreditCard,
-    ChevronRight, Clock, Link, MessageSquare, Bookmark, X
+    ChevronRight, Clock, Link, MessageSquare, Bookmark,
+    X, Package, Building2, RefreshCw, Ban
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 // Core types
 interface PurchaseItem {
@@ -63,7 +65,439 @@ interface MerchantOption {
     }[];
     notes: string;
     bestValue?: boolean;
+    shipping?: string;
+    tax?: number | 'none' | 'unknown';
+    returnPolicy?: string;
 }
+
+// Add this after the interfaces and before any components
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount);
+};
+
+interface ConfirmationDialogProps {
+    title: string;
+    children: React.ReactNode;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    primaryAction: () => void;
+    primaryActionText: string;
+    secondaryAction?: () => void;
+    secondaryActionText?: string;
+    destructive?: boolean;
+}
+
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+    title,
+    children,
+    open,
+    onOpenChange,
+    primaryAction,
+    primaryActionText,
+    secondaryAction,
+    secondaryActionText,
+    destructive = false
+}) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>{title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+                {children}
+                <div className="flex justify-end gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Cancel
+                    </Button>
+                    {secondaryAction && (
+                        <Button
+                            variant="secondary"
+                            onClick={secondaryAction}
+                        >
+                            {secondaryActionText}
+                        </Button>
+                    )}
+                    <Button
+                        variant={destructive ? "destructive" : "default"}
+                        onClick={primaryAction}
+                    >
+                        {primaryActionText}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
+    </Dialog>
+);
+
+interface RemoveMerchantDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    merchant: string;
+    onConfirm: () => void;
+}
+
+const RemoveMerchantDialog: React.FC<RemoveMerchantDialogProps> = ({
+    open,
+    onOpenChange,
+    merchant,
+    onConfirm
+}) => (
+    <ConfirmationDialog
+        title="Remove Merchant Option"
+        open={open}
+        onOpenChange={onOpenChange}
+        primaryAction={onConfirm}
+        primaryActionText="Remove"
+        destructive
+    >
+        <p>Are you sure you want to remove {merchant}? This can't be undone.</p>
+    </ConfirmationDialog>
+);
+
+interface RemoveProductDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onReject: () => void;
+    onRemove: () => void;
+}
+
+const RemoveProductDialog: React.FC<RemoveProductDialogProps> = ({
+    open,
+    onOpenChange,
+    onReject,
+    onRemove
+}) => (
+    <ConfirmationDialog
+        title="Remove Product Option"
+        open={open}
+        onOpenChange={onOpenChange}
+        primaryAction={onRemove}
+        primaryActionText="Remove Completely"
+        secondaryAction={onReject}
+        secondaryActionText="Move to Rejected"
+        destructive
+    >
+        <p>Keep in rejected list for future reference?</p>
+    </ConfirmationDialog>
+);
+
+interface ProductCardProps {
+    product: ProductOption;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    selectedItem: PurchaseItem;
+    setEditingOptionId: (id: string | null) => void;
+    setShowMerchantModal: (show: boolean) => void;
+    setShowRemoveConfirmModal: (show: boolean) => void;
+    handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({
+    product,
+    isSelected,
+    onSelect,
+    selectedItem,
+    setEditingOptionId,
+    setShowMerchantModal,
+    setShowRemoveConfirmModal,
+    handleUpdateItemStatus
+}) => {
+    const savings = ((product.price.msrp - product.price.current) / product.price.msrp * 100).toFixed(0);
+
+    return (
+        <Card
+            className={`relative bg-white ${isSelected ? 'ring-2 ring-blue-100 bg-blue-50' : 'hover:bg-gray-50'} 
+                transition-all cursor-pointer`}
+            onClick={() => onSelect(product.id)}
+        >
+            <CardContent className="p-6">
+                <div className="flex gap-6">
+                    {/* Left Column - Image */}
+                    <div className="w-48 flex-shrink-0">
+                        <img
+                            src={product.image}
+                            alt={product.name}
+                            className="h-32 w-full object-cover rounded-md bg-gray-100"
+                        />
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 min-w-0">
+                        {/* Product Info */}
+                        <div className="flex justify-between">
+                            <div className="flex-1 pr-6">
+                                {/* Header */}
+                                <div className="mb-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-medium flex items-center gap-4">
+                                            {product.name}
+                                            <div className="flex items-center gap-1 text-sm">
+                                                <span className="text-gray-500 line-through">
+                                                    {formatCurrency(product.price.msrp)}
+                                                </span>
+                                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                                                <span className="font-medium">
+                                                    {formatCurrency(product.price.current)}
+                                                </span>
+                                                <Badge variant="secondary" className="bg-green-100 text-green-800 ml-2">
+                                                    {savings}% Off
+                                                </Badge>
+                                            </div>
+                                        </h3>
+                                    </div>
+                                    {product.status === 'shortlisted' && (
+                                        <Badge className="mt-2 bg-yellow-100 text-yellow-800">
+                                            <Star className="h-4 w-4 mr-1 inline" />
+                                            Shortlisted
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {/* Specs */}
+                                <div className="space-y-1 mb-4">
+                                    {product.specs.map((spec, i) => (
+                                        <div key={i} className="text-sm text-gray-600">• {spec}</div>
+                                    ))}
+                                </div>
+
+                                {/* Reviews */}
+                                <div className="flex items-center gap-3">
+                                    {product.reviews.map((review, i) => (
+                                        <a
+                                            key={i}
+                                            href={review.url}
+                                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Link className="h-3 w-3" />
+                                            {review.source}
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons - Right side with proper spacing */}
+                            <div className="absolute top-6 right-6 flex flex-col gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex items-center justify-center gap-2 transition-all duration-200
+                  w-[120px] md:w-28  // Full width on larger screens
+                  min-w-[32px]"      // Prevents squishing on small screens
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingOptionId(product.id);
+                                        setShowMerchantModal(true);
+                                    }}
+                                >
+                                    <Store className="h-4 w-4" />
+                                    <span className="hidden md:inline">Add Seller</span>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={product.status === 'shortlisted' ? 'default' : 'outline'}
+                                    className="flex items-center justify-center gap-2 transition-all duration-200
+                  w-[120px] md:w-28
+                  min-w-[32px]"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newStatus = product.status === 'shortlisted' ? 'considering' : 'shortlisted';
+                                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                                    }}
+                                >
+                                    <Star className="h-4 w-4" />
+                                    <span className="hidden md:inline">Shortlist</span>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={product.status === 'rejected' ? 'destructive' : 'outline'}
+                                    className="flex items-center justify-center gap-2 transition-all duration-200
+                  w-[120px] md:w-28
+                  min-w-[32px]"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newStatus = product.status === 'rejected' ? 'considering' : 'rejected';
+                                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                                    }}
+                                >
+                                    <MinusCircle className="h-4 w-4" />
+                                    <span className="hidden md:inline">Reject</span>
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Notes Section */}
+                        {product.notes && (
+                            <div className="mt-2 pt-2 border-t">
+                                <div className="flex items-start gap-2 text-sm">
+                                    <MessageSquare className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                                    <span className="text-gray-600">{product.notes}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+
+            {/* Remove Button - Top Right */}
+            <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingOptionId(product.id);
+                    setShowRemoveConfirmModal(true);
+                }}
+            >
+                <X className="h-4 w-4" />
+            </Button>
+
+            {/* Rejection Overlay */}
+            {product.status === 'rejected' && (
+                <div className="absolute inset-0 bg-gray-500/10">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute top-0 left-0 w-[200%] h-[200%] origin-top-left -rotate-45 border-t-2 border-gray-300 transform -translate-y-1/2" />
+                    </div>
+                </div>
+            )}
+        </Card>
+    );
+};
+
+// Add after the existing interfaces
+interface DetailRowProps {
+    icon: LucideIcon;
+    label: string;
+    value: string | number;
+}
+
+const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, value }) => (
+    <div className="flex items-center gap-2 text-sm">
+        <Icon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+        <span className="text-gray-500">{label}:</span>
+        <span className="text-gray-700">{value}</span>
+    </div>
+);
+
+interface RewardRowProps {
+    reward: {
+        type: 'credit-card' | 'store';
+        value: string;
+        name: string;
+    };
+}
+
+const RewardRow: React.FC<RewardRowProps> = ({ reward }) => (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+        {reward.type === 'store' ? (
+            <Store className="h-4 w-4" />
+        ) : (
+            <CreditCard className="h-4 w-4" />
+        )}
+        <span>{reward.value} {reward.name}</span>
+    </div>
+);
+
+// Add the helper function
+const formatTax = (tax: number | 'none' | 'unknown'): string => {
+    if (tax === 'none') return 'No sales tax';
+    if (tax === 'unknown') return 'Tax unknown';
+    return `${tax}% sales tax`;
+};
+
+// Update MerchantCard interface
+interface MerchantCardProps extends MerchantOption {
+    onRemove: () => void;
+}
+
+const MerchantCard: React.FC<MerchantCardProps> = ({
+    name,
+    price,
+    netPrice,
+    bestValue,
+    shipping,
+    tax,
+    returnPolicy,
+    rewards,
+    onRemove
+}) => (
+    <Card className="relative">
+        {bestValue && (
+            <Badge className="absolute -top-2 -right-2 bg-green-100 text-green-800">
+                Best Value
+            </Badge>
+        )}
+
+        <CardContent className="p-6">
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="font-medium text-lg">{name}</h3>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-400 hover:text-red-600"
+                    onClick={onRemove}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+
+            <div className="space-y-2 mb-6">
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">List Price</span>
+                    <span className="line-through">{formatCurrency(price)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-medium">
+                    <span className="text-gray-500">Cash Price</span>
+                    <span>{formatCurrency(price)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-medium text-green-600">
+                    <span>Net Price</span>
+                    <span>{formatCurrency(netPrice)}</span>
+                </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+                <DetailRow
+                    icon={Package}
+                    label="Shipping"
+                    value={shipping || "Free shipping"}
+                />
+                <DetailRow
+                    icon={Building2}
+                    label="Sales Tax"
+                    value={formatTax(tax || 'unknown')}
+                />
+                <DetailRow
+                    icon={RefreshCw}
+                    label="Returns"
+                    value={returnPolicy || "Return policy unknown"}
+                />
+            </div>
+
+            <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-500">Rewards & Savings</h4>
+                {rewards.map((reward, i) => (
+                    <RewardRow key={i} reward={reward} />
+                ))}
+            </div>
+
+            {bestValue && (
+                <Button className="w-full mt-6" variant="default">
+                    Mark Purchased
+                </Button>
+            )}
+        </CardContent>
+    </Card>
+);
 
 const PurchasePlannerMockup: React.FC = () => {
     // Initialize with sample data
@@ -229,14 +663,18 @@ const PurchasePlannerMockup: React.FC = () => {
         setSelectedItemId(id);
     };
 
-    const handleUpdateItemStatus = (itemId: string, optionId: string, newStatus: 'considering' | 'shortlisted' | 'rejected') => {
+    const handleUpdateItemStatus = (
+        itemId: string,
+        optionId: string,
+        status: ProductOption['status']
+    ) => {
         setItems(items.map(item => {
             if (item.id !== itemId) return item;
             return {
                 ...item,
                 options: item.options.map(opt => {
                     if (opt.id !== optionId) return opt;
-                    return { ...opt, status: newStatus };
+                    return { ...opt, status };
                 })
             };
         }));
@@ -383,14 +821,6 @@ const PurchasePlannerMockup: React.FC = () => {
         setItemToAction(null);
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
     return (
         <div className="p-6 space-y-6">
             {/* Metrics Cards */}
@@ -398,10 +828,10 @@ const PurchasePlannerMockup: React.FC = () => {
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">{metrics.activePlans}</div>
+                            <div className="text-2xl font-bold mb-1">1</div>
                             <p className="text-sm text-muted-foreground">Active Plans</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {metrics.highPriorityCount} High Priority
+                                1 High Priority
                             </p>
                         </div>
                     </CardContent>
@@ -410,7 +840,7 @@ const PurchasePlannerMockup: React.FC = () => {
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">{formatCurrency(metrics.totalPlanned)}</div>
+                            <div className="text-2xl font-bold mb-1">$649</div>
                             <p className="text-sm text-muted-foreground">Total Planned</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Next: Standing Desk ($700)
@@ -422,12 +852,12 @@ const PurchasePlannerMockup: React.FC = () => {
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">{(metrics.averageSavings * 100).toFixed(0)}%</div>
+                            <div className="text-2xl font-bold mb-1">19%</div>
                             <p className="text-sm text-muted-foreground">Average Savings</p>
                             <div className="w-full bg-gray-100 h-2 rounded-full mt-2">
                                 <div
                                     className="bg-blue-600 h-2 rounded-full"
-                                    style={{ width: `${metrics.averageSavings * 100}%` }}
+                                    style={{ width: '19%' }}
                                 />
                             </div>
                         </div>
@@ -437,7 +867,7 @@ const PurchasePlannerMockup: React.FC = () => {
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">{metrics.plansOptimized}/{metrics.activePlans}</div>
+                            <div className="text-2xl font-bold mb-1">0/1</div>
                             <p className="text-sm text-muted-foreground">Plans Optimized</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 25% or more Below MSRP
@@ -448,380 +878,248 @@ const PurchasePlannerMockup: React.FC = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="h-[calc(100vh-12rem)] flex bg-gray-50">
-                {/* Priority Rail */}
-                <div className="w-60 border-r bg-white">
-                    <div className="p-4 border-b">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold text-sm">Purchase Plans</h2>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => setShowNeedModal(true)}
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
+            <div className="h-[calc(100vh-12rem)]">
+                <div className="flex h-full">
+                    {/* Priority Rail - 15% */}
+                    <div className="w-60 flex-shrink-0 border-r bg-white">
+                        <div className="p-4 flex flex-col gap-4 border-b">
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-semibold text-sm">Purchase Plans</h2>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setShowNeedModal(true)}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <Input
+                                className="text-sm"
+                                placeholder="Search across all items..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        <Input
-                            className="text-sm"
-                            placeholder="Search across all items..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <ScrollArea className="h-[calc(100vh-5rem)]">
-                        <div className="p-2 space-y-4">
-                            <div className="space-y-6">
-                                {/* Active Plans */}
-                                {Object.entries(itemsByPriority).map(([priority, priorityItems]) => (
-                                    <div key={priority} className={`space-y-1`}>
-                                        <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
-                                            {priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                            {priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                            {priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                            {priority}
+                        <div className="overflow-auto h-[calc(100%-88px)]">
+                            <div className="p-2 space-y-4">
+                                <div className="space-y-6">
+                                    {/* Active Plans */}
+                                    {Object.entries(itemsByPriority).map(([priority, priorityItems]) => (
+                                        <div key={priority} className={`space-y-1`}>
+                                            <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
+                                                {priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                                                {priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
+                                                {priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                                {priority}
+                                            </div>
+                                            {priorityItems
+                                                .filter(item => !item.status || item.status === 'active')
+                                                .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                                .map(item => (
+                                                    <div
+                                                        key={item.id}
+                                                        className={`px-2 py-1.5 rounded-md text-sm cursor-pointer
+                                                        ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`}
+                                                        onClick={() => handleSelectItem(item.id)}
+                                                    >
+                                                        {item.name}
+                                                    </div>
+                                                ))}
                                         </div>
-                                        {priorityItems
-                                            .filter(item => !item.status || item.status === 'active')
+                                    ))}
+
+                                    {/* Archived Plans */}
+                                    <div className="mt-8">
+                                        <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
+                                            <Bookmark className="h-4 w-4 text-gray-500" />
+                                            Archived Plans
+                                        </div>
+                                        {items
+                                            .filter(item => item.status === 'archived')
                                             .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                             .map(item => (
                                                 <div
                                                     key={item.id}
-                                                    className={`px-2 py-1.5 rounded-md text-sm cursor-pointer
-                                                    ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`}
+                                                    className="px-2 py-1.5 rounded-md text-sm cursor-pointer text-gray-500 hover:bg-gray-100"
                                                     onClick={() => handleSelectItem(item.id)}
                                                 >
                                                     {item.name}
                                                 </div>
                                             ))}
                                     </div>
-                                ))}
-
-                                {/* Archived Plans */}
-                                <div className="mt-8">
-                                    <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
-                                        <Bookmark className="h-4 w-4 text-gray-500" />
-                                        Archived Plans
-                                    </div>
-                                    {items
-                                        .filter(item => item.status === 'archived')
-                                        .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                                        .map(item => (
-                                            <div
-                                                key={item.id}
-                                                className="px-2 py-1.5 rounded-md text-sm cursor-pointer text-gray-500 hover:bg-gray-100"
-                                                onClick={() => handleSelectItem(item.id)}
-                                            >
-                                                {item.name}
-                                            </div>
-                                        ))}
                                 </div>
                             </div>
                         </div>
-                    </ScrollArea>
-                </div>
-                {/* Product Analysis Panel */}
-                <div className="flex-1 border-r bg-white">
-                    {selectedItem ? (
-                        <>
-                            <div className="p-4 border-b">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h2 className="font-semibold">{selectedItem.name}</h2>
-                                        <div className="space-y-2">
-                                            <div className="text-sm text-gray-500 flex items-center gap-2">
-                                                {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                                {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                                {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                                {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority •
-                                                Target: {formatCurrency(selectedItem.targetPrice.max)}
-                                            </div>
-                                            {selectedItem.notes && (
-                                                <div className="text-sm text-gray-600 flex items-start gap-2">
-                                                    <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
-                                                    <span>{selectedItem.notes}</span>
+                    </div>
+
+                    {/* Product Analysis Panel - 55% */}
+                    <div className="flex-1 border-r bg-white overflow-hidden">
+                        {selectedItem ? (
+                            <div className="h-full flex flex-col">
+                                <div className="p-4 border-b flex-shrink-0">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h2 className="font-semibold">{selectedItem.name}</h2>
+                                            <div className="space-y-2">
+                                                <div className="text-sm text-gray-500 flex items-center gap-2">
+                                                    {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                                                    {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
+                                                    {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                                    {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority •
+                                                    Target: {formatCurrency(selectedItem.targetPrice.max)}
                                                 </div>
-                                            )}
+                                                {selectedItem.notes && (
+                                                    <div className="text-sm text-gray-600 flex items-start gap-2">
+                                                        <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
+                                                        <span>{selectedItem.notes}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {selectedItem?.status === 'archived' ? (
+                                        <div className="flex gap-2">
+                                            {selectedItem?.status === 'archived' ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!selectedItem) return;
+                                                        setItems(prevItems => prevItems.map(item =>
+                                                            item.id === selectedItem.id
+                                                                ? { ...item, status: 'active' }
+                                                                : item
+                                                        ));
+                                                    }}
+                                                >
+                                                    <ArrowUpCircle className="h-4 w-4 mr-2" />
+                                                    Reactivate Plan
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!selectedItem) return;
+                                                        setItemToAction(selectedItem.id);
+                                                        setShowArchiveConfirm(true);
+                                                    }}
+                                                >
+                                                    <Bookmark className="h-4 w-4 mr-2" />
+                                                    Archive Plan
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                    if (!selectedItem) return;
-                                                    setItems(prevItems => prevItems.map(item =>
-                                                        item.id === selectedItem.id
-                                                            ? { ...item, status: 'active' }
-                                                            : item
-                                                    ));
+                                                    setEditingItemId(selectedItem.id);
+                                                    setNewNeed({
+                                                        name: selectedItem.name,
+                                                        priority: selectedItem.priority,
+                                                        targetPrice: selectedItem.targetPrice,
+                                                        notes: selectedItem.notes || ''
+                                                    });
+                                                    setShowNeedModal(true);
                                                 }}
                                             >
-                                                <ArrowUpCircle className="h-4 w-4 mr-2" />
-                                                Reactivate Plan
+                                                Edit Details
                                             </Button>
-                                        ) : (
                                             <Button
-                                                variant="ghost"
                                                 size="sm"
-                                                onClick={() => {
-                                                    if (!selectedItem) return;
-                                                    setItemToAction(selectedItem.id);
-                                                    setShowArchiveConfirm(true);
-                                                }}
+                                                onClick={() => setShowProductModal(true)}
+                                                className="bg-blue-600 hover:bg-blue-700"
                                             >
-                                                <Bookmark className="h-4 w-4 mr-2" />
-                                                Archive Plan
+                                                Add Option
                                             </Button>
-                                        )}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                                setEditingItemId(selectedItem.id);
-                                                setNewNeed({
-                                                    name: selectedItem.name,
-                                                    priority: selectedItem.priority,
-                                                    targetPrice: selectedItem.targetPrice,
-                                                    notes: selectedItem.notes || ''
-                                                });
-                                                setShowNeedModal(true);
-                                            }}
-                                        >
-                                            Edit Details
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => setShowProductModal(true)}
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            Add Option
-                                        </Button>
+                                        </div>
+                                    </div>
+                                    <Tabs value={activeTab} onValueChange={(value: 'all' | 'shortlist' | 'rejected') => setActiveTab(value)}>
+                                        <TabsList>
+                                            <TabsTrigger value="all">All Options</TabsTrigger>
+                                            <TabsTrigger value="shortlist">Shortlist</TabsTrigger>
+                                            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                </div>
+                                <div className="overflow-auto flex-1 p-4">
+                                    <div className="space-y-6">
+                                        {selectedItem.options
+                                            .filter(option => {
+                                                if (activeTab === 'all') return true;
+                                                if (activeTab === 'shortlist') return option.status === 'shortlisted';
+                                                return option.status === 'rejected';
+                                            })
+                                            .map(option => (
+                                                <ProductCard
+                                                    key={option.id}
+                                                    product={option}
+                                                    isSelected={option.id === selectedItem.selectedOption}
+                                                    selectedItem={selectedItem}
+                                                    setEditingOptionId={setEditingOptionId}
+                                                    setShowMerchantModal={setShowMerchantModal}
+                                                    setShowRemoveConfirmModal={setShowRemoveConfirmModal}
+                                                    handleUpdateItemStatus={handleUpdateItemStatus}
+                                                    onSelect={(id) => {
+                                                        setItems(prevItems => prevItems.map(item =>
+                                                            item.id === selectedItem.id
+                                                                ? { ...item, selectedOption: id }
+                                                                : item
+                                                        ));
+                                                    }}
+                                                />
+                                            ))}
                                     </div>
                                 </div>
-                                <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
-                                    <TabsList>
-                                        <TabsTrigger value="all">All Options</TabsTrigger>
-                                        <TabsTrigger value="shortlist">Shortlist</TabsTrigger>
-                                        <TabsTrigger value="rejected">Rejected</TabsTrigger>
-                                    </TabsList>
-                                </Tabs>
                             </div>
-                            <ScrollArea className="h-[calc(100vh-8rem)]">
-                                <div className="p-4 space-y-6">
-                                    {selectedItem.options
-                                        .filter(option => {
-                                            if (activeTab === 'all') return true;
-                                            if (activeTab === 'shortlist') return option.status === 'shortlisted';
-                                            return option.status === 'rejected';
-                                        })
-                                        .map(option => (
-                                            <Card key={option.id} className={option.status === 'shortlisted' ? 'ring-2 ring-blue-100' : ''}>
-                                                <CardContent className="p-6">
-                                                    <div className="flex gap-6">
-                                                        <img
-                                                            src={option.image}
-                                                            alt={option.name}
-                                                            className="w-48 h-32 object-cover rounded-md bg-gray-100"
-                                                        />
-                                                        <div className="flex-1 space-y-4">
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <h3 className="font-medium text-lg">
-                                                                        {option.status === 'shortlisted' && (
-                                                                            <Star className="h-4 w-4 text-yellow-400 inline mr-2" />
-                                                                        )}
-                                                                        {option.name}
-                                                                    </h3>
-                                                                    <div className="text-sm text-gray-500">
-                                                                        MSRP: {formatCurrency(option.price.msrp)} Now: {formatCurrency(option.price.current)}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                Select an item to view details
+                            </div>
+                        )}
+                    </div>
 
-                                                            <div className="space-y-1">
-                                                                {option.specs.map((spec, i) => (
-                                                                    <div key={i} className="text-sm text-gray-600">• {spec}</div>
-                                                                ))}
-                                                            </div>
-
-                                                            <Separator />
-
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-start gap-2 text-sm">
-                                                                    <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
-                                                                    <div className="text-gray-600">{option.notes}</div>
-                                                                </div>
-
-                                                                <div className="flex items-center gap-3">
-                                                                    {option.reviews.map((review, i) => (
-                                                                        <a
-                                                                            key={i}
-                                                                            href={review.url}
-                                                                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                                                                        >
-                                                                            <Link className="h-3 w-3" />
-                                                                            {review.source}
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-
-                                                                {/* Action Buttons */}
-                                                                <div className="flex flex-wrap gap-2 mt-4">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="w-28"
-                                                                        onClick={() => {
-                                                                            setEditingOptionId(option.id);  // This is crucial - we need to know which option we're adding to
-                                                                            setShowMerchantModal(true);
-                                                                        }}
-                                                                    >
-                                                                        <Store className="h-4 w-4 mr-2" />
-                                                                        Add Merchant
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant={option.status === 'shortlisted' ? 'default' : 'outline'}
-                                                                        className="w-28"
-                                                                        onClick={() => handleUpdateItemStatus(selectedItem.id, option.id, 'shortlisted')}
-                                                                    >
-                                                                        Shortlist
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant={option.status === 'rejected' ? 'destructive' : 'outline'}
-                                                                        className="w-28"
-                                                                        onClick={() => handleUpdateItemStatus(selectedItem.id, option.id, 'rejected')}
-                                                                    >
-                                                                        Reject
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="w-28"
-                                                                        onClick={() => {
-                                                                            // Show confirmation modal
-                                                                            setEditingOptionId(option.id);
-                                                                            setShowRemoveConfirmModal(true);
-                                                                        }}
-                                                                    >
-                                                                        Remove
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
+                    {/* Merchant Panel - 30% */}
+                    <div className="w-96 flex-shrink-0 bg-white">
+                        {selectedOption ? (
+                            <div className="h-full flex flex-col">
+                                <div className="p-4 border-b flex-shrink-0">
+                                    <h2 className="font-semibold mb-6">{selectedOption.name}</h2>
+                                    <div className="space-y-1">
+                                        <div className="text-sm flex justify-between">
+                                            <span className="text-gray-500">Cash Price:</span>
+                                            <span className="font-medium">{formatCurrency(selectedOption.merchants[0]?.price || 0)}</span>
+                                        </div>
+                                        <div className="text-sm flex justify-between">
+                                            <span className="text-gray-500">Net Price:</span>
+                                            <span className="text-green-600 font-medium">{formatCurrency(selectedOption.merchants[0]?.netPrice || 0)}</span>
+                                        </div>
+                                        <div className="text-sm flex justify-between">
+                                            <span className="text-gray-500">Total Savings:</span>
+                                            <span className="text-green-600 font-medium">{formatCurrency((selectedOption.merchants[0]?.price || 0) - (selectedOption.merchants[0]?.netPrice || 0))}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="overflow-auto flex-1 p-4">
+                                    <div className="space-y-4">
+                                        {selectedOption.merchants.map((merchant) => (
+                                            <MerchantCard
+                                                key={merchant.id}
+                                                {...merchant}
+                                                onRemove={() => {
+                                                    setEditingOptionId(merchant.id);
+                                                    setShowRemoveConfirmModal(true);
+                                                }}
+                                            />
                                         ))}
-                                </div>
-                            </ScrollArea>
-                        </>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-gray-500">
-                            Select an item to view details
-                        </div>
-                    )}
-                </div>
-                {/* Merchant Comparison Panel */}
-                <div className="w-96 bg-white">
-                    {selectedOption ? (
-                        <>
-                            <div className="p-4 border-b">
-                                <h2 className="font-semibold mb-2">{selectedOption.name}</h2>
-                                <div className="text-sm text-gray-500">
-                                    Best Value: {formatCurrency(selectedOption.merchants[0]?.netPrice || 0)}
-                                    ({formatCurrency(selectedOption.merchants[0]?.netPrice || 0)} after rewards)
+                                    </div>
                                 </div>
                             </div>
-                            <ScrollArea className="h-[calc(100vh-5rem)]">
-                                <div className="p-4 space-y-4">
-                                    {selectedOption.merchants.map((merchant) => (
-                                        <Card
-                                            key={merchant.id}
-                                            className={merchant.bestValue ? 'ring-2 ring-green-200 bg-green-50' : ''}
-                                        >
-                                            <CardContent className="p-4">
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <h3 className="font-medium">{merchant.name}</h3>
-                                                            <div className="flex items-center gap-2 text-sm">
-                                                                <span className="text-gray-500 line-through">${selectedOption.price.msrp}</span>
-                                                                <span className="text-gray-500">→ ${merchant.price}</span>
-                                                                <span className="text-green-600 font-medium">→ ${merchant.netPrice}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {merchant.bestValue && (
-                                                                    <Badge className="bg-green-100 text-green-800">Best Value</Badge>
-                                                                )}
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (confirm('Remove this merchant option?')) {
-                                                                            handleRemoveMerchant(selectedOption.id, merchant.id);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                {merchant.rewards.map((reward, i) => (
-                                                                    <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                                                                        {reward.type === 'store' ? (
-                                                                            <Store className="h-4 w-4" />
-                                                                        ) : (
-                                                                            <CreditCard className="h-4 w-4" />
-                                                                        )}
-                                                                        {reward.value} {reward.name}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-
-                                                            <div className="text-sm text-gray-500">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Clock className="h-4 w-4" />
-                                                                    Free Shipping
-                                                                </div>
-                                                                {merchant.notes && (
-                                                                    <div className="flex items-center gap-2 mt-1">
-                                                                        <AlertCircle className="h-4 w-4" />
-                                                                        {merchant.notes}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {merchant.bestValue && (
-                                                                <Button
-                                                                    className="w-full bg-gray-900 hover:bg-gray-800"
-                                                                    onClick={() => {
-                                                                        console.log('Marked as purchased from:', merchant.name);
-                                                                    }}
-                                                                >
-                                                                    Mark Purchased
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        </>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-gray-500">
-                            Select a product option to view merchants
-                        </div>
-                    )}
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                Select a product option to view merchants
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1265,49 +1563,34 @@ const PurchasePlannerMockup: React.FC = () => {
                 </DialogContent>
             </Dialog>
             {/* Remove Option Confirmation Modal */}
-            <Dialog open={showRemoveConfirmModal} onOpenChange={setShowRemoveConfirmModal}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Remove Product Option</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <p>Would you like to keep this option in your rejected list for future reference? This helps track what you've already considered and why it didn't work out.</p>
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setShowRemoveConfirmModal(false);
-                                    setEditingOptionId(null);
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={() => {
-                                    if (!selectedItem || !editingOptionId) return;
-                                    handleUpdateItemStatus(selectedItem.id, editingOptionId, 'rejected');
-                                    setShowRemoveConfirmModal(false);
-                                    setEditingOptionId(null);
-                                }}
-                            >
-                                Move to Rejected
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={() => {
-                                    if (!selectedItem || !editingOptionId) return;
-                                    handleRemoveOption(selectedItem.id, editingOptionId);
-                                    setShowRemoveConfirmModal(false);
-                                    setEditingOptionId(null);
-                                }}
-                            >
-                                Remove Completely
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <RemoveProductDialog
+                open={showRemoveConfirmModal}
+                onOpenChange={setShowRemoveConfirmModal}
+                onReject={() => {
+                    if (!selectedItem || !editingOptionId) return;
+                    handleUpdateItemStatus(selectedItem.id, editingOptionId, 'rejected');
+                    setShowRemoveConfirmModal(false);
+                    setEditingOptionId(null);
+                }}
+                onRemove={() => {
+                    if (!selectedItem || !editingOptionId) return;
+                    handleRemoveOption(selectedItem.id, editingOptionId);
+                    setShowRemoveConfirmModal(false);
+                    setEditingOptionId(null);
+                }}
+            />
+            {/* Remove Merchant Confirmation Modal */}
+            <RemoveMerchantDialog
+                open={showRemoveConfirmModal}
+                onOpenChange={setShowRemoveConfirmModal}
+                merchant={selectedOption?.merchants.find(m => m.id === editingOptionId)?.name || ''}
+                onConfirm={() => {
+                    if (!selectedOption || !editingOptionId) return;
+                    handleRemoveMerchant(selectedOption.id, editingOptionId);
+                    setShowRemoveConfirmModal(false);
+                    setEditingOptionId(null);
+                }}
+            />
         </div>
     );
 };
