@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,9 +15,18 @@ import {
     AlertCircle, ArrowUpCircle, Circle, MinusCircle,
     Plus, ExternalLink, Star, Store, CreditCard,
     ChevronRight, Clock, Link, MessageSquare, Bookmark,
-    X, Package, Building2, RefreshCw, Ban
+    X, Package, Building2, RefreshCw, Ban, LayoutGrid,
+    List, MoreHorizontal, Edit, Archive, Download,
+    Trash, Layers
 } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { LucideIcon } from 'lucide-react';
+import MerchantModal from './MerchantModal';
 
 // Core types
 interface PurchaseItem {
@@ -37,6 +46,8 @@ interface PurchaseItem {
 interface ProductOption {
     id: string;
     name: string;
+    brand: string;
+    modelNumber: string;
     image: string;
     price: {
         msrp: number;
@@ -46,8 +57,8 @@ interface ProductOption {
     notes: string;
     reviews: {
         source: string;
-        title: string;
         url: string;
+        title?: string;
     }[];
     status: 'considering' | 'shortlisted' | 'rejected';
     merchants: MerchantOption[];
@@ -91,7 +102,46 @@ interface ConfirmationDialogProps {
     secondaryActionText?: string;
     destructive?: boolean;
 }
-
+const PlanActions = ({
+    onEdit,
+    onArchive,
+    onExport,
+    onDelete
+}: {
+    onEdit: () => void;
+    onArchive: () => void;
+    onExport: () => void;
+    onDelete: () => void;
+}) => (
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+                <MoreHorizontal className="h-4 w-4" />
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onArchive}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archive Plan
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={onDelete}
+                className="text-red-600 focus:text-red-600"
+            >
+                <Trash className="h-4 w-4 mr-2" />
+                Delete Plan
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
+);
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
     title,
     children,
@@ -198,7 +248,17 @@ interface ProductCardProps {
     setShowMerchantModal: (show: boolean) => void;
     setShowRemoveConfirmModal: (show: boolean) => void;
     handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
+    onStatusChange?: (productId: string, status: ProductOption['status']) => void;
 }
+
+// Move getBestMerchant outside of ProductCard
+const getBestMerchant = (merchants: MerchantOption[]): MerchantOption | undefined => {
+    if (!merchants.length) return undefined;
+    return merchants.reduce((best, current) => {
+        if (!best) return current;
+        return current.netPrice < best.netPrice ? current : best;
+    }, merchants[0]);
+};
 
 const ProductCard: React.FC<ProductCardProps> = ({
     product,
@@ -206,163 +266,212 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onSelect,
     selectedItem,
     setEditingOptionId,
-    setShowMerchantModal,
+    setShowMerchantModal: setShowMerchantModalGlobal,
     setShowRemoveConfirmModal,
-    handleUpdateItemStatus
+    handleUpdateItemStatus,
+    onStatusChange
 }) => {
-    const savings = ((product.price.msrp - product.price.current) / product.price.msrp * 100).toFixed(0);
+    const [status, setStatus] = useState<ProductOption['status']>(product.status);
+    const [showMerchantModal, setShowMerchantModal] = useState(false);
+    const [showImageModal, setShowImageModal] = useState(false);
+
+    // Now we can safely use getBestMerchant in useMemo
+    const savings = useMemo(() => {
+        const bestPrice = getBestMerchant(product.merchants)?.netPrice ?? product.price.current;
+        return ((product.price.msrp - bestPrice) / product.price.msrp * 100).toFixed(0);
+    }, [product.price.msrp, product.price.current, product.merchants]);
+
+    const handleStatusChange = (newStatus: ProductOption['status']) => {
+        // If clicking the current status, revert to considering
+        const updatedStatus = status === newStatus ? 'considering' : newStatus;
+
+        // Update local state
+        setStatus(updatedStatus);
+
+        // Update parent state
+        onStatusChange?.(product.id, updatedStatus);
+
+        // Update global state
+        handleUpdateItemStatus(selectedItem.id, product.id, updatedStatus);
+    };
+
+    const handleEditProduct = (productId: string) => {
+        console.log('Edit product:', productId);
+    };
+
+    const handleRemoveProduct = (productId: string) => {
+        setEditingOptionId(productId);
+        setShowRemoveConfirmModal(true);
+    };
 
     return (
-        <Card
-            className={`relative bg-white ${isSelected ? 'ring-2 ring-blue-100 bg-blue-50' : 'hover:bg-gray-50'} 
-                transition-all cursor-pointer`}
-            onClick={() => onSelect(product.id)}
-        >
+        <Card className="relative bg-white">
+            {status === 'shortlisted' && (
+                <Badge
+                    className="absolute -top-2.5 -right-2.5 z-10 bg-blue-100 text-blue-800 flex items-center gap-1 pointer-events-none px-2 py-1 shadow-sm"
+                >
+                    <Star className="h-4 w-4" />
+                    Shortlisted
+                </Badge>
+            )}
             <CardContent className="p-6">
-                <div className="flex gap-6">
-                    {/* Left Column - Image */}
-                    <div className="w-48 flex-shrink-0">
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-32 w-full object-cover rounded-md bg-gray-100"
-                        />
+                <div className="flex gap-8">
+                    {/* Left: Image */}
+                    <div className="w-80 flex-shrink-0 relative">
+                        <div className="aspect-[4/3] relative">
+                            <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-contain cursor-zoom-in"
+                                onClick={() => setShowImageModal(true)}
+                            />
+                        </div>
                     </div>
 
-                    {/* Main Content Area */}
-                    <div className="flex-1 min-w-0">
-                        {/* Product Info */}
-                        <div className="flex justify-between">
-                            <div className="flex-1 pr-6">
-                                {/* Header */}
-                                <div className="mb-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-medium flex items-center gap-4">
-                                            {product.name}
-                                            <div className="flex items-center gap-1 text-sm">
-                                                <span className="text-gray-500 line-through">
-                                                    {formatCurrency(product.price.msrp)}
-                                                </span>
-                                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                                                <span className="font-medium">
-                                                    {formatCurrency(product.price.current)}
-                                                </span>
-                                                <Badge variant="secondary" className="bg-green-100 text-green-800 ml-2">
-                                                    {savings}% Off
-                                                </Badge>
-                                            </div>
-                                        </h3>
-                                    </div>
-                                    {product.status === 'shortlisted' && (
-                                        <Badge className="mt-2 bg-yellow-100 text-yellow-800">
-                                            <Star className="h-4 w-4 mr-1 inline" />
-                                            Shortlisted
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                {/* Specs */}
-                                <div className="space-y-1 mb-4">
-                                    {product.specs.map((spec, i) => (
-                                        <div key={i} className="text-sm text-gray-600">• {spec}</div>
-                                    ))}
-                                </div>
-
-                                {/* Reviews */}
-                                <div className="flex items-center gap-3">
-                                    {product.reviews.map((review, i) => (
-                                        <a
-                                            key={i}
-                                            href={review.url}
-                                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Link className="h-3 w-3" />
-                                            {review.source}
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Action Buttons - Right side with proper spacing */}
-                            <div className="absolute top-6 right-6 flex flex-col gap-2">
+                    {/* Right: Content Area */}
+                    <div className="flex-1 min-w-0 space-y-4">
+                        {/* Title and Actions */}
+                        <div className="flex items-start justify-between">
+                            <h3 className="text-xl font-medium">{product.name}</h3>
+                            <div className="flex items-center gap-2">
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex items-center justify-center gap-2 transition-all duration-200
-                  w-[120px] md:w-28  // Full width on larger screens
-                  min-w-[32px]"      // Prevents squishing on small screens
+                                    className="flex items-center gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setEditingOptionId(product.id);
                                         setShowMerchantModal(true);
                                     }}
                                 >
                                     <Store className="h-4 w-4" />
-                                    <span className="hidden md:inline">Add Seller</span>
+                                    Add Seller
                                 </Button>
                                 <Button
                                     size="sm"
-                                    variant={product.status === 'shortlisted' ? 'default' : 'outline'}
-                                    className="flex items-center justify-center gap-2 transition-all duration-200
-                  w-[120px] md:w-28
-                  min-w-[32px]"
+                                    variant={status === 'shortlisted' ? 'default' : 'outline'}
+                                    className="flex items-center gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const newStatus = product.status === 'shortlisted' ? 'considering' : 'shortlisted';
-                                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                                        handleStatusChange('shortlisted');
                                     }}
                                 >
                                     <Star className="h-4 w-4" />
-                                    <span className="hidden md:inline">Shortlist</span>
+                                    Shortlist
                                 </Button>
                                 <Button
                                     size="sm"
-                                    variant={product.status === 'rejected' ? 'destructive' : 'outline'}
-                                    className="flex items-center justify-center gap-2 transition-all duration-200
-                  w-[120px] md:w-28
-                  min-w-[32px]"
+                                    variant={status === 'rejected' ? 'destructive' : 'outline'}
+                                    className="flex items-center gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        const newStatus = product.status === 'rejected' ? 'considering' : 'rejected';
-                                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                                        handleStatusChange('rejected');
                                     }}
                                 >
-                                    <MinusCircle className="h-4 w-4" />
-                                    <span className="hidden md:inline">Reject</span>
+                                    <Ban className="h-4 w-4" />
+                                    {status === 'rejected' ? 'Unreject' : 'Reject'}
                                 </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleEditProduct(product.id)}>
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => handleRemoveProduct(product.id)}
+                                            className="text-red-600"
+                                        >
+                                            <Trash className="h-4 w-4 mr-2" />
+                                            Remove Product
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
 
-                        {/* Notes Section */}
-                        {product.notes && (
-                            <div className="mt-2 pt-2 border-t">
-                                <div className="flex items-start gap-2 text-sm">
-                                    <MessageSquare className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
-                                    <span className="text-gray-600">{product.notes}</span>
+                        {/* Price Flow */}
+                        <div className="flex items-center flex-wrap gap-2">
+                            <span className="text-gray-500 line-through">
+                                {formatCurrency(product.price.msrp)}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium">
+                                {formatCurrency(product.price.current)}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-green-600">
+                                {formatCurrency(getBestMerchant(product.merchants)?.netPrice ?? product.price.current)}
+                            </span>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                {savings}% Off
+                            </Badge>
+                        </div>
+
+                        {/* Auto-adjusting Content Grid */}
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6">
+                            {/* Specifications */}
+                            <div className="space-y-2">
+                                {product.specs.map((spec, i) => (
+                                    <div key={i} className="flex items-start gap-2">
+                                        <Circle className="h-1.5 w-1.5 mt-2 text-gray-400" />
+                                        <span className="text-gray-600">{spec}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Notes & Reviews */}
+                            <div className="space-y-3">
+                                {product.notes && (
+                                    <div className="flex items-start gap-2">
+                                        <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
+                                        <span className="text-gray-600">{product.notes}</span>
+                                    </div>
+                                )}
+                                <div className="flex flex-wrap gap-2">
+                                    {product.reviews.map((review, i) => (
+                                        <Button
+                                            key={i}
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex items-center gap-2"
+                                            asChild
+                                        >
+                                            <a
+                                                href={review.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <Link className="h-4 w-4" />
+                                                {review.source}
+                                            </a>
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </CardContent>
 
-            {/* Remove Button - Top Right */}
-            <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-2 right-2 h-6 w-6 p-0 text-gray-400 hover:text-red-600"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingOptionId(product.id);
-                    setShowRemoveConfirmModal(true);
-                }}
-            >
-                <X className="h-4 w-4" />
-            </Button>
+            {/* Merchant Modal */}
+            {showMerchantModal && (
+                <MerchantModal
+                    productId={product.id}
+                    onClose={() => setShowMerchantModal(false)}
+                    onSubmit={(merchantData) => {
+                        console.log('Adding merchant:', merchantData);
+                        setShowMerchantModal(false);
+                    }}
+                />
+            )}
 
             {/* Rejection Overlay */}
-            {product.status === 'rejected' && (
+            {status === 'rejected' && (
                 <div className="absolute inset-0 bg-gray-500/10">
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute top-0 left-0 w-[200%] h-[200%] origin-top-left -rotate-45 border-t-2 border-gray-300 transform -translate-y-1/2" />
@@ -499,6 +608,115 @@ const MerchantCard: React.FC<MerchantCardProps> = ({
     </Card>
 );
 
+const ProductListItem: React.FC<ProductCardProps> = ({
+    product,
+    isSelected,
+    onSelect,
+    selectedItem,
+    setEditingOptionId,
+    setShowMerchantModal,
+    setShowRemoveConfirmModal,
+    handleUpdateItemStatus
+}) => {
+    const bestMerchant = product.merchants.reduce((best, current) => {
+        if (!best) return current;
+        return current.netPrice < best.netPrice ? current : best;
+    }, product.merchants[0]);
+
+    return (
+        <div className={`px-4 py-2 border rounded-lg mb-1 flex items-center gap-4 cursor-pointer
+            ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}
+            ${product.status === 'rejected' ? 'opacity-60' : ''}`}
+            onClick={() => onSelect(product.id)}
+        >
+            {/* Image */}
+            <img
+                src={product.image}
+                alt={product.name}
+                className="w-12 h-12 object-contain bg-gray-50 rounded"
+            />
+
+            {/* Name and Status */}
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+                <h3 className="font-medium truncate">{product.name}</h3>
+                {product.status === 'shortlisted' && (
+                    <Badge className="bg-yellow-100 text-yellow-800 flex-shrink-0">
+                        <Star className="h-3 w-3 mr-1 inline" />
+                        Shortlisted
+                    </Badge>
+                )}
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="flex items-center gap-2 flex-shrink-0 mr-6">
+                <span className="text-sm text-gray-500 line-through">
+                    {formatCurrency(product.price.msrp)}
+                </span>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+                <span className="text-sm">
+                    {formatCurrency(bestMerchant?.price ?? product.price.msrp)}
+                </span>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+                <span className="text-sm font-medium text-green-600">
+                    {formatCurrency(bestMerchant?.netPrice ?? product.price.msrp)}
+                </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 flex-shrink-0">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingOptionId(product.id);
+                        setShowMerchantModal(true);
+                    }}
+                >
+                    <Store className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant={product.status === 'shortlisted' ? 'default' : 'outline'}
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const newStatus = product.status === 'shortlisted' ? 'considering' : 'shortlisted';
+                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                    }}
+                >
+                    <Star className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant={product.status === 'rejected' ? 'destructive' : 'outline'}
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const newStatus = product.status === 'rejected' ? 'considering' : 'rejected';
+                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
+                    }}
+                >
+                    <Ban className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 text-gray-400 hover:text-red-600 hover:border-red-600"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingOptionId(product.id);
+                        setShowRemoveConfirmModal(true);
+                    }}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+};
+
 const PurchasePlannerMockup: React.FC = () => {
     // Initialize with sample data
     const [items, setItems] = useState<PurchaseItem[]>([
@@ -507,11 +725,13 @@ const PurchasePlannerMockup: React.FC = () => {
             name: 'Standing Desk',
             priority: 'high',
             targetPrice: { min: 500, max: 700 },
-            status: 'active',  // Add this line
+            status: 'active',
             options: [
                 {
                     id: '1-1',
                     name: 'Fully Jarvis',
+                    brand: 'Fully',
+                    modelNumber: 'Jarvis',
                     image: '/api/placeholder/400/200',
                     price: { msrp: 799, current: 649 },
                     specs: [
@@ -521,7 +741,7 @@ const PurchasePlannerMockup: React.FC = () => {
                     ],
                     notes: "The Wirecutter's top pick. Stable at all heights according to BTD.",
                     reviews: [
-                        { source: 'BTD', title: 'In-depth Review', url: '#' }
+                        { source: 'BTD', url: '#', title: 'In-depth Review' }
                     ],
                     status: 'considering',
                     merchants: [
@@ -562,10 +782,16 @@ const PurchasePlannerMockup: React.FC = () => {
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [newProduct, setNewProduct] = useState({
         name: '',
-        price: { msrp: 0, current: 0 },
-        specs: [''],
+        brand: '',
+        modelNumber: '',
+        imageUrl: '',
+        price: {
+            msrp: 0,
+            current: 0
+        },
+        specs: [] as string[],
         notes: '',
-        reviews: [{ source: '', title: '', url: '' }]
+        reviews: [{ source: '', url: '', title: '' }]
     });
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -577,6 +803,7 @@ const PurchasePlannerMockup: React.FC = () => {
         rewards: [{ type: 'credit-card' as const, value: '', name: '' }],
         notes: ''
     });
+    const [viewType, setViewType] = useState<'card' | 'list'>('card');
 
     // Computed values
     const selectedItem = items.find(item => item.id === selectedItemId);
@@ -712,14 +939,16 @@ const PurchasePlannerMockup: React.FC = () => {
         const newOption: ProductOption = {
             id: `option-${Date.now()}`,
             name: newProduct.name,
-            image: '/api/placeholder/400/200',
+            brand: newProduct.brand,
+            modelNumber: newProduct.modelNumber,
+            image: newProduct.imageUrl || '/api/placeholder/400/200',
             price: {
                 msrp: Number(newProduct.price.msrp) || 0,
                 current: Number(newProduct.price.current) || 0
             },
-            specs: newProduct.specs.filter(Boolean),
+            specs: newProduct.specs,
             notes: newProduct.notes,
-            reviews: newProduct.reviews.filter(r => r.source && r.title),
+            reviews: newProduct.reviews.filter(r => r.source && r.url),
             status: 'considering',
             merchants: []
         };
@@ -732,15 +961,16 @@ const PurchasePlannerMockup: React.FC = () => {
             };
         }));
 
-        console.log('Updated items:', items); // Add this line
-
         setShowProductModal(false);
         setNewProduct({
             name: '',
+            brand: '',
+            modelNumber: '',
+            imageUrl: '',
             price: { msrp: 0, current: 0 },
-            specs: [''],
+            specs: [],
             notes: '',
-            reviews: [{ source: '', title: '', url: '' }]
+            reviews: [{ source: '', url: '', title: '' }]
         });
     };
 
@@ -819,6 +1049,22 @@ const PurchasePlannerMockup: React.FC = () => {
 
         setShowDeleteConfirm(false);
         setItemToAction(null);
+    };
+
+    const handleProductStatusChange = (productId: string, newStatus: ProductOption['status']) => {
+        setItems(prevItems => prevItems.map(item => {
+            if (item.id === selectedItem?.id) {
+                return {
+                    ...item,
+                    options: item.options.map(option =>
+                        option.id === productId
+                            ? { ...option, status: newStatus }
+                            : option
+                    )
+                };
+            }
+            return item;
+        }));
     };
 
     return (
@@ -958,26 +1204,64 @@ const PurchasePlannerMockup: React.FC = () => {
                         {selectedItem ? (
                             <div className="h-full flex flex-col">
                                 <div className="p-4 border-b flex-shrink-0">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="font-semibold">{selectedItem.name}</h2>
-                                            <div className="space-y-2">
-                                                <div className="text-sm text-gray-500 flex items-center gap-2">
-                                                    {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                                    {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                                    {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                                    {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority •
-                                                    Target: {formatCurrency(selectedItem.targetPrice.max)}
-                                                </div>
-                                                {selectedItem.notes && (
-                                                    <div className="text-sm text-gray-600 flex items-start gap-2">
-                                                        <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
-                                                        <span>{selectedItem.notes}</span>
-                                                    </div>
-                                                )}
+                                    {/* Top line with main info */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <h2 className="text-xl font-semibold">{selectedItem.name}</h2>
+                                            <div className="flex items-center gap-2 text-gray-600">
+                                                {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                                                {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
+                                                {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                                <span>{selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority</span>
+                                                <span>•</span>
+                                                <span>Budget: {formatCurrency(selectedItem.targetPrice.max)}</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
+                                    </div>
+
+                                    {/* Bottom line with all controls */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            {/* Filter tabs */}
+                                            <Tabs
+                                                value={activeTab}
+                                                onValueChange={(value) => setActiveTab(value as 'all' | 'shortlist' | 'rejected')}
+                                            >
+                                                <TabsList>
+                                                    <TabsTrigger value="all" className="flex items-center gap-2">
+                                                        <Layers className="h-4 w-4" />
+                                                        <span>All Options</span>
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="shortlist" className="flex items-center gap-2">
+                                                        <Star className="h-4 w-4" />
+                                                        <span>Shortlist</span>
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="rejected" className="flex items-center gap-2">
+                                                        <Ban className="h-4 w-4" />
+                                                        <span>Rejected</span>
+                                                    </TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+
+                                            {/* View type tabs */}
+                                            <Tabs
+                                                value={viewType}
+                                                onValueChange={(value) => setViewType(value as 'card' | 'list')}
+                                            >
+                                                <TabsList>
+                                                    <TabsTrigger value="card" className="flex items-center gap-2">
+                                                        <LayoutGrid className="h-4 w-4" />
+                                                        <span>Card View</span>
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="list" className="flex items-center gap-2">
+                                                        <List className="h-4 w-4" />
+                                                        <span>List View</span>
+                                                    </TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
                                             {selectedItem?.status === 'archived' ? (
                                                 <Button
                                                     variant="outline"
@@ -995,35 +1279,30 @@ const PurchasePlannerMockup: React.FC = () => {
                                                     Reactivate Plan
                                                 </Button>
                                             ) : (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        if (!selectedItem) return;
+                                                <PlanActions
+                                                    onEdit={() => {
+                                                        setEditingItemId(selectedItem.id);
+                                                        setNewNeed({
+                                                            name: selectedItem.name,
+                                                            priority: selectedItem.priority,
+                                                            targetPrice: selectedItem.targetPrice,
+                                                            notes: selectedItem.notes || ''
+                                                        });
+                                                        setShowNeedModal(true);
+                                                    }}
+                                                    onArchive={() => {
                                                         setItemToAction(selectedItem.id);
                                                         setShowArchiveConfirm(true);
                                                     }}
-                                                >
-                                                    <Bookmark className="h-4 w-4 mr-2" />
-                                                    Archive Plan
-                                                </Button>
+                                                    onExport={() => {
+                                                        console.log('Export functionality coming soon!');
+                                                    }}
+                                                    onDelete={() => {
+                                                        setItemToAction(selectedItem.id);
+                                                        setShowDeleteConfirm(true);
+                                                    }}
+                                                />
                                             )}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setEditingItemId(selectedItem.id);
-                                                    setNewNeed({
-                                                        name: selectedItem.name,
-                                                        priority: selectedItem.priority,
-                                                        targetPrice: selectedItem.targetPrice,
-                                                        notes: selectedItem.notes || ''
-                                                    });
-                                                    setShowNeedModal(true);
-                                                }}
-                                            >
-                                                Edit Details
-                                            </Button>
                                             <Button
                                                 size="sm"
                                                 onClick={() => setShowProductModal(true)}
@@ -1033,13 +1312,14 @@ const PurchasePlannerMockup: React.FC = () => {
                                             </Button>
                                         </div>
                                     </div>
-                                    <Tabs value={activeTab} onValueChange={(value: 'all' | 'shortlist' | 'rejected') => setActiveTab(value)}>
-                                        <TabsList>
-                                            <TabsTrigger value="all">All Options</TabsTrigger>
-                                            <TabsTrigger value="shortlist">Shortlist</TabsTrigger>
-                                            <TabsTrigger value="rejected">Rejected</TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
+
+                                    {/* Notes (if any) */}
+                                    {selectedItem.notes && (
+                                        <div className="mt-4 text-sm text-gray-600 flex items-start gap-2">
+                                            <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
+                                            <span>{selectedItem.notes}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="overflow-auto flex-1 p-4">
                                     <div className="space-y-6">
@@ -1050,23 +1330,44 @@ const PurchasePlannerMockup: React.FC = () => {
                                                 return option.status === 'rejected';
                                             })
                                             .map(option => (
-                                                <ProductCard
-                                                    key={option.id}
-                                                    product={option}
-                                                    isSelected={option.id === selectedItem.selectedOption}
-                                                    selectedItem={selectedItem}
-                                                    setEditingOptionId={setEditingOptionId}
-                                                    setShowMerchantModal={setShowMerchantModal}
-                                                    setShowRemoveConfirmModal={setShowRemoveConfirmModal}
-                                                    handleUpdateItemStatus={handleUpdateItemStatus}
-                                                    onSelect={(id) => {
-                                                        setItems(prevItems => prevItems.map(item =>
-                                                            item.id === selectedItem.id
-                                                                ? { ...item, selectedOption: id }
-                                                                : item
-                                                        ));
-                                                    }}
-                                                />
+                                                viewType === 'card' ? (
+                                                    <ProductCard
+                                                        key={option.id}
+                                                        product={option}
+                                                        isSelected={option.id === selectedItem.selectedOption}
+                                                        onSelect={(id) => {
+                                                            setItems(prevItems => prevItems.map(item =>
+                                                                item.id === selectedItem.id
+                                                                    ? { ...item, selectedOption: id }
+                                                                    : item
+                                                            ));
+                                                        }}
+                                                        selectedItem={selectedItem}
+                                                        setEditingOptionId={setEditingOptionId}
+                                                        setShowMerchantModal={setShowMerchantModal}
+                                                        setShowRemoveConfirmModal={setShowRemoveConfirmModal}
+                                                        handleUpdateItemStatus={handleUpdateItemStatus}
+                                                        onStatusChange={handleProductStatusChange}
+                                                    />
+                                                ) : (
+                                                    <ProductListItem
+                                                        key={option.id}
+                                                        product={option}
+                                                        isSelected={option.id === selectedItem.selectedOption}
+                                                        onSelect={(id) => {
+                                                            setItems(prevItems => prevItems.map(item =>
+                                                                item.id === selectedItem.id
+                                                                    ? { ...item, selectedOption: id }
+                                                                    : item
+                                                            ));
+                                                        }}
+                                                        selectedItem={selectedItem}
+                                                        setEditingOptionId={setEditingOptionId}
+                                                        setShowMerchantModal={setShowMerchantModal}
+                                                        setShowRemoveConfirmModal={setShowRemoveConfirmModal}
+                                                        handleUpdateItemStatus={handleUpdateItemStatus}
+                                                    />
+                                                )
                                             ))}
                                     </div>
                                 </div>
@@ -1125,11 +1426,12 @@ const PurchasePlannerMockup: React.FC = () => {
 
             {/* Add Product Modal */}
             <Dialog open={showProductModal} onOpenChange={setShowProductModal}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Add Product Option</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                        {/* Product Name */}
                         <div>
                             <Label>Product Name</Label>
                             <Input
@@ -1138,9 +1440,50 @@ const PurchasePlannerMockup: React.FC = () => {
                                     ...prev,
                                     name: e.target.value
                                 }))}
+                                placeholder="e.g., Ankarsrum Original Kitchen Machine"
                             />
                         </div>
 
+                        {/* Brand and Model Number (side by side) */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label>Brand</Label>
+                                <Input
+                                    value={newProduct.brand}
+                                    onChange={(e) => setNewProduct(prev => ({
+                                        ...prev,
+                                        brand: e.target.value
+                                    }))}
+                                    placeholder="e.g., Ankarsrum"
+                                />
+                            </div>
+                            <div>
+                                <Label>Model Number</Label>
+                                <Input
+                                    value={newProduct.modelNumber}
+                                    onChange={(e) => setNewProduct(prev => ({
+                                        ...prev,
+                                        modelNumber: e.target.value
+                                    }))}
+                                    placeholder="e.g., AKM 6230"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Image URL */}
+                        <div>
+                            <Label>Image URL</Label>
+                            <Input
+                                value={newProduct.imageUrl}
+                                onChange={(e) => setNewProduct(prev => ({
+                                    ...prev,
+                                    imageUrl: e.target.value
+                                }))}
+                                placeholder="https://..."
+                            />
+                        </div>
+
+                        {/* Pricing */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label>MSRP</Label>
@@ -1171,58 +1514,24 @@ const PurchasePlannerMockup: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <Label>Specifications</Label>
-                            {newProduct.specs.map((spec, index) => (
-                                <div key={index} className="flex gap-2 mt-2">
-                                    <Input
-                                        value={spec}
-                                        onChange={(e) => {
-                                            const newSpecs = [...newProduct.specs];
-                                            newSpecs[index] = e.target.value;
-                                            setNewProduct(prev => ({ ...prev, specs: newSpecs }));
-                                        }}
-                                        placeholder="e.g., Height Range: 24.5&quot; to 50&quot;"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            if (index === newProduct.specs.length - 1) {
-                                                setNewProduct(prev => ({
-                                                    ...prev,
-                                                    specs: [...prev.specs, '']
-                                                }));
-                                            } else {
-                                                setNewProduct(prev => ({
-                                                    ...prev,
-                                                    specs: prev.specs.filter((_, i) => i !== index)
-                                                }));
-                                            }
-                                        }}
-                                    >
-                                        {index === newProduct.specs.length - 1 ? '+' : '-'}
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
 
-                        <div>
-                            <Label>Notes</Label>
-                            <Textarea
-                                value={newProduct.notes}
-                                onChange={(e) => setNewProduct(prev => ({
-                                    ...prev,
-                                    notes: e.target.value
-                                }))}
-                                placeholder="Add any important details about this product option"
-                                className="h-20"
-                            />
-                        </div>
+                        {/* Specifications (now a textarea) */}
+                        <Textarea
+                            value={newProduct.specs.join('\n')}
+                            onChange={(e) => setNewProduct(prev => ({
+                                ...prev,
+                                specs: e.target.value.split('\n').filter(line => line.trim())
+                            }))}
+                            placeholder="Enter product specifications (one per line)"
+                            className="min-h-[80px] max-h-[300px]"
+                        />
 
+
+                        {/* Reviews */}
                         <div>
-                            <Label>Reviews</Label>
+                            <Label> Reviews</Label>
                             {newProduct.reviews.map((review, index) => (
-                                <div key={index} className="grid grid-cols-3 gap-2 mt-2">
+                                <div key={index} className="flex gap-2 mt-2">
                                     <Input
                                         placeholder="Source"
                                         value={review.source}
@@ -1233,154 +1542,54 @@ const PurchasePlannerMockup: React.FC = () => {
                                         }}
                                     />
                                     <Input
-                                        placeholder="Title"
-                                        value={review.title}
+                                        placeholder="URL"
+                                        value={review.url}
                                         onChange={(e) => {
                                             const newReviews = [...newProduct.reviews];
-                                            newReviews[index] = { ...review, title: e.target.value };
+                                            newReviews[index] = { ...review, url: e.target.value };
                                             setNewProduct(prev => ({ ...prev, reviews: newReviews }));
                                         }}
                                     />
-                                    <div className="flex gap-2">
-                                        <Input
-                                            placeholder="URL"
-                                            value={review.url}
-                                            onChange={(e) => {
-                                                const newReviews = [...newProduct.reviews];
-                                                newReviews[index] = { ...review, url: e.target.value };
-                                                setNewProduct(prev => ({ ...prev, reviews: newReviews }));
-                                            }}
-                                        />
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => {
-                                                if (index === newProduct.reviews.length - 1) {
-                                                    setNewProduct(prev => ({
-                                                        ...prev,
-                                                        reviews: [...prev.reviews, { source: '', title: '', url: '' }]
-                                                    }));
-                                                } else {
-                                                    setNewProduct(prev => ({
-                                                        ...prev,
-                                                        reviews: prev.reviews.filter((_, i) => i !== index)
-                                                    }));
-                                                }
-                                            }}
-                                        >
-                                            {index === newProduct.reviews.length - 1 ? '+' : '-'}
-                                        </Button>
-                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (index === newProduct.reviews.length - 1) {
+                                                setNewProduct(prev => ({
+                                                    ...prev,
+                                                    reviews: [...prev.reviews, { source: '', url: '', title: '' }]
+                                                }));
+                                            } else {
+                                                setNewProduct(prev => ({
+                                                    ...prev,
+                                                    reviews: prev.reviews.filter((_, i) => i !== index)
+                                                }));
+                                            }
+                                        }}
+                                    >
+                                        {index === newProduct.reviews.length - 1 ? '+' : '-'}
+                                    </Button>
                                 </div>
                             ))}
                         </div>
 
+                        {/* Notes */}
+                        <Textarea
+                            value={newProduct.notes}
+                            onChange={(e) => setNewProduct(prev => ({
+                                ...prev,
+                                notes: e.target.value
+                            }))}
+                            placeholder="Add any additional notes about this product"
+                            className="min-h-[80px] max-h-[300px]"
+                        />
+
+                        {/* Action Buttons */}
                         <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setShowProductModal(false)}>
                                 Cancel
                             </Button>
                             <Button onClick={handleAddProductOption}>
                                 Add Product Option
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Add Merchant Modal */}
-            <Dialog open={showMerchantModal} onOpenChange={setShowMerchantModal}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Merchant Option</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label>Merchant Name</Label>
-                            <Input
-                                value={newMerchant.name}
-                                onChange={(e) => setNewMerchant(prev => ({
-                                    ...prev,
-                                    name: e.target.value
-                                }))}
-                                placeholder="e.g., Amazon, Best Buy"
-                            />
-                        </div>
-
-                        <div>
-                            <Label>Price</Label>
-                            <Input
-                                type="number"
-                                value={newMerchant.price}
-                                onChange={(e) => setNewMerchant(prev => ({
-                                    ...prev,
-                                    price: parseFloat(e.target.value)
-                                }))}
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div>
-                            <Label>Rewards</Label>
-                            {newMerchant.rewards.map((reward, index) => (
-                                <div key={index} className="grid grid-cols-3 gap-2 mt-2">
-                                    <Input
-                                        placeholder="Value (%)"
-                                        value={reward.value}
-                                        onChange={(e) => {
-                                            const newRewards = [...newMerchant.rewards];
-                                            newRewards[index] = { ...reward, value: e.target.value };
-                                            setNewMerchant(prev => ({ ...prev, rewards: newRewards }));
-                                        }}
-                                    />
-                                    <Input
-                                        placeholder="Name"
-                                        value={reward.name}
-                                        onChange={(e) => {
-                                            const newRewards = [...newMerchant.rewards];
-                                            newRewards[index] = { ...reward, name: e.target.value };
-                                            setNewMerchant(prev => ({ ...prev, rewards: newRewards }));
-                                        }}
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            if (index === newMerchant.rewards.length - 1) {
-                                                setNewMerchant(prev => ({
-                                                    ...prev,
-                                                    rewards: [...prev.rewards, { type: 'credit-card', value: '', name: '' }]
-                                                }));
-                                            } else {
-                                                setNewMerchant(prev => ({
-                                                    ...prev,
-                                                    rewards: prev.rewards.filter((_, i) => i !== index)
-                                                }));
-                                            }
-                                        }}
-                                    >
-                                        {index === newMerchant.rewards.length - 1 ? '+' : '-'}
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div>
-                            <Label>Notes</Label>
-                            <Textarea
-                                value={newMerchant.notes}
-                                onChange={(e) => setNewMerchant(prev => ({
-                                    ...prev,
-                                    notes: e.target.value
-                                }))}
-                                placeholder="Add any important details about this merchant"
-                                className="h-20"
-                            />
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setShowMerchantModal(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={() => handleAddMerchant(editingOptionId!)}>
-                                Add Merchant
                             </Button>
                         </div>
                     </div>
