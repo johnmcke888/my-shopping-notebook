@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -271,7 +271,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     handleUpdateItemStatus,
     onStatusChange
 }) => {
-    const [status, setStatus] = useState<ProductOption['status']>(product.status);
+
+
     const [showMerchantModal, setShowMerchantModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
 
@@ -282,21 +283,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }, [product.price.msrp, product.price.current, product.merchants]);
 
     const handleStatusChange = (newStatus: ProductOption['status']) => {
-        // If clicking the current status, revert to considering
-        const updatedStatus = status === newStatus ? 'considering' : newStatus;
-
-        // Update local state
-        setStatus(updatedStatus);
-
         // Update parent state
-        onStatusChange?.(product.id, updatedStatus);
+        onStatusChange?.(product.id, newStatus);
 
         // Update global state
-        handleUpdateItemStatus(selectedItem.id, product.id, updatedStatus);
+        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
     };
 
     const handleEditProduct = (productId: string) => {
-        console.log('Edit product:', productId);
     };
 
     const handleRemoveProduct = (productId: string) => {
@@ -306,7 +300,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     return (
         <Card className="relative bg-white">
-            {status === 'shortlisted' && (
+            {product.status === 'shortlisted' && (
                 <Badge
                     className="absolute -top-2.5 -right-2.5 z-10 bg-blue-100 text-blue-800 flex items-center gap-1 pointer-events-none px-2 py-1 shadow-sm"
                 >
@@ -348,7 +342,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 </Button>
                                 <Button
                                     size="sm"
-                                    variant={status === 'shortlisted' ? 'default' : 'outline'}
+                                    variant={product.status === 'shortlisted' ? 'default' : 'outline'}
                                     className="flex items-center gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -360,15 +354,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 </Button>
                                 <Button
                                     size="sm"
-                                    variant={status === 'rejected' ? 'destructive' : 'outline'}
+                                    variant={product.status === 'rejected' ? 'destructive' : 'outline'}
                                     className="flex items-center gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        handleStatusChange('rejected');
+                                        const newStatus = product.status === 'rejected' ? 'considering' : 'rejected';
+                                        handleUpdateItemStatus(selectedItem.id, product.id, newStatus);
                                     }}
                                 >
                                     <Ban className="h-4 w-4" />
-                                    {status === 'rejected' ? 'Unreject' : 'Reject'}
+                                    {product.status === 'rejected' ? 'Unreject' : 'Reject'}
                                 </Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -464,15 +459,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     productId={product.id}
                     onClose={() => setShowMerchantModal(false)}
                     onSubmit={(merchantData) => {
-                        console.log('Adding merchant:', merchantData);
                         setShowMerchantModal(false);
                     }}
                 />
             )}
 
             {/* Rejection Overlay */}
-            {status === 'rejected' && (
-                <div className="absolute inset-0 bg-gray-500/10">
+            {product.status === 'rejected' && (
+                <div className="absolute inset-0 bg-gray-500/10 pointer-events-none">
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute top-0 left-0 w-[200%] h-[200%] origin-top-left -rotate-45 border-t-2 border-gray-300 transform -translate-y-1/2" />
                     </div>
@@ -1295,7 +1289,6 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         setShowArchiveConfirm(true);
                                                     }}
                                                     onExport={() => {
-                                                        console.log('Export functionality coming soon!');
                                                     }}
                                                     onDelete={() => {
                                                         setItemToAction(selectedItem.id);
