@@ -611,7 +611,7 @@ const PurchasePlannerMockup: React.FC = () => {
             };
         }));
 
-        setShowProductModal(false);
+        const [showAddProductModal, setShowAddProductModal] = useState(false);
         setNewProduct({
             name: '',
             brand: '',
@@ -997,6 +997,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}
                                                         onStatusChange={handleProductStatusChange}
+                                                        setShowProductModal={setShowProductModal}  // Add this line
                                                     />
                                                 ) : (
                                                     <ProductListItem
@@ -1015,6 +1016,8 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         setShowMerchantModal={setShowMerchantModal}
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}
+                                                        onStatusChange={handleProductStatusChange}  // Add this line
+                                                        setShowProductModal={setShowProductModal}   // Add this line too
                                                     />
                                                 )
                                             ))}

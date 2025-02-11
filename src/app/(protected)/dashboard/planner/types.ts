@@ -56,7 +56,7 @@ export interface PurchaseItem {
     status: 'active' | 'archived';
 }
 
-export interface ProductCardProps {
+export interface SharedProductProps {
     product: ProductOption;
     isSelected: boolean;
     onSelect: (id: string) => void;
@@ -66,4 +66,29 @@ export interface ProductCardProps {
     setShowRemoveConfirmModal: (show: boolean) => void;
     handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
     onStatusChange?: (productId: string, status: ProductOption['status']) => void;
+    setShowProductModal: (show: boolean) => void;
+}
+
+export interface ProductCardProps extends SharedProductProps {
+    product: ProductOption;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    selectedItem: PurchaseItem;
+    setEditingOptionId: (id: string | null) => void;
+    setShowMerchantModal: (show: boolean) => void;
+    setShowRemoveConfirmModal: (show: boolean) => void;
+    handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
+    onStatusChange?: (productId: string, status: ProductOption['status']) => void;
+    setShowProductModal: (show: boolean) => void;
+}
+
+export interface ProductListItemProps extends SharedProductProps {
+    product: ProductOption;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    selectedItem: PurchaseItem;
+    setEditingOptionId: (id: string | null) => void;
+    setShowMerchantModal: (show: boolean) => void;
+    setShowRemoveConfirmModal: (show: boolean) => void;
+    handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
 }

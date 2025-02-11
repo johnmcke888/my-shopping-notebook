@@ -33,11 +33,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onSelect,
     selectedItem,
     setEditingOptionId,
-    setShowMerchantModal: setShowMerchantModalGlobal,
+    setShowMerchantModal: setShowMerchantModalGlobal,  // Rename it here
     setShowRemoveConfirmModal,
     handleUpdateItemStatus,
-    onStatusChange
+    onStatusChange,
+    setShowProductModal
 }) => {
+    // Local state
     const [showMerchantModal, setShowMerchantModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
 
@@ -53,6 +55,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     const handleEditProduct = (productId: string) => {
         setEditingOptionId(productId);
+        setShowProductModal(true); // This will open the modal
     };
 
     const handleRemoveProduct = (productId: string) => {
@@ -64,8 +67,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <Card className={`relative overflow-hidden ${product.status === 'rejected' ? 'bg-gray-50' : 'bg-white'
             }`}>
             {product.status === 'shortlisted' && (
-                <div className="absolute top-0 right-0 w-20 h-20">
-                    <div className="absolute transform rotate-45 bg-blue-600 text-white text-xs font-semibold py-1 right-[-35px] top-[32px] w-[170px] text-center">
+                <div className="absolute top-0 left-0 w-20 h-20">
+                    <div className="absolute transform -rotate-45 bg-blue-600 text-white text-xs font-semibold py-1 left-[-35px] top-[32px] w-[170px] text-center">
                         Shortlisted
                     </div>
                 </div>
@@ -112,10 +115,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 <Button
                                     variant={product.status === 'shortlisted' ? 'default' : 'outline'}
                                     size="sm"
-                                    onClick={() => handleStatusChange('shortlisted')}
+                                    onClick={() => handleStatusChange(product.status === 'shortlisted' ? 'considering' : 'shortlisted')}
                                 >
                                     <Star className="h-4 w-4 mr-2" />
-                                    Shortlist
+                                    {product.status === 'shortlisted' ? 'Shortlisted' : 'Shortlist'}
                                 </Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -149,20 +152,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </div>
 
                         {/* Price Section */}
-                        <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 line-through">
-                                    {formatCurrency(product.price.msrp)}
-                                </span>
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                                <span className="font-medium">
-                                    {formatCurrency(product.price.current)}
-                                </span>
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                                <span className="font-medium text-green-600">
-                                    {formatCurrency(getBestMerchant(product.merchants)?.netPrice ?? product.price.current)}
-                                </span>
-                            </div>
+                        <div className="flex items-center gap-4 bg-white border p-3 rounded-lg">                            <div className="flex items-center gap-2">
+                            <span className="text-gray-500 line-through">
+                                {formatCurrency(product.price.msrp)}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium">
+                                {formatCurrency(product.price.current)}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-green-600">
+                                {formatCurrency(getBestMerchant(product.merchants)?.netPrice ?? product.price.current)}
+                            </span>
+                        </div>
                             <Badge variant="secondary" className="bg-green-100 text-green-800">
                                 {savings}% Off
                             </Badge>
