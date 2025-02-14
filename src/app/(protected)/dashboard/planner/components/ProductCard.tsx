@@ -33,14 +33,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onSelect,
     selectedItem,
     setEditingOptionId,
-    setShowMerchantModal: setShowMerchantModalGlobal,  // Rename it here
+    showMerchantModal,
+    setShowMerchantModal,
     setShowRemoveConfirmModal,
     handleUpdateItemStatus,
     onStatusChange,
     setShowProductModal
 }) => {
     // Local state
-    const [showMerchantModal, setShowMerchantModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
 
     const savings = useMemo(() => {
@@ -54,8 +54,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
     };
 
     const handleEditProduct = (productId: string) => {
-        setEditingOptionId(productId);
-        setShowProductModal(true); // This will open the modal
+        // Let's add some console logs to track what's happening
+        console.log('Edit clicked for product:', productId);
+
+        try {
+            setEditingOptionId(productId);
+            setShowProductModal(true);
+
+            // Add a cleanup function
+            return () => {
+                setEditingOptionId(null);
+                setShowProductModal(false);
+            };
+        } catch (error) {
+            console.error('Error in handleEditProduct:', error);
+            // Reset states if there's an error
+            setEditingOptionId(null);
+            setShowProductModal(false);
+        }
     };
 
     const handleRemoveProduct = (productId: string) => {
@@ -107,7 +123,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setShowMerchantModalGlobal(true)}
+                                    onClick={() => setShowMerchantModal(true)}
                                 >
                                     <Store className="h-4 w-4 mr-2" />
                                     Add Seller
@@ -140,11 +156,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                             {product.status === 'rejected' ? 'Unreject' : 'Reject'}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => handleRemoveProduct(product.id)}
-                                            className="text-red-600"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleEditProduct(product.id);
+                                            }}
                                         >
-                                            <Trash className="h-4 w-4 mr-2" />
-                                            Remove
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Details
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

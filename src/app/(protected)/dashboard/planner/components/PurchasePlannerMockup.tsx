@@ -993,6 +993,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         }}
                                                         selectedItem={selectedItem}
                                                         setEditingOptionId={setEditingOptionId}
+                                                        showMerchantModal={showMerchantModal}
                                                         setShowMerchantModal={setShowMerchantModal}
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}
@@ -1013,6 +1014,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         }}
                                                         selectedItem={selectedItem}
                                                         setEditingOptionId={setEditingOptionId}
+                                                        showMerchantModal={showMerchantModal}
                                                         setShowMerchantModal={setShowMerchantModal}
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}

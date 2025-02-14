@@ -15,6 +15,7 @@ const ProductListItem: React.FC<ProductCardProps> = ({
     onSelect,
     selectedItem,
     setEditingOptionId,
+    showMerchantModal,
     setShowMerchantModal,
     setShowRemoveConfirmModal,
     handleUpdateItemStatus
