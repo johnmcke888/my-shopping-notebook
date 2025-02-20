@@ -183,12 +183,12 @@ const inputStyles = {
 
 // Add these style utilities
 const styles = {
-    formSection: "mb-6 pb-4 border-b border-gray-200 last:border-b-0",
-    sectionTitle: "text-lg font-medium mb-4",
+    formSection: "mb-4 pb-4 border-b border-gray-200 last:border-b-0",
+    sectionTitle: "text-base font-medium mb-3",
     priceInputContainer: "relative",
     currencySymbol: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none",
-    priceInput: "pl-7 w-full",
-    termsGrid: "grid grid-cols-1 md:grid-cols-2 gap-4",
+    priceInput: "pl-7 h-9 w-full",
+    termsGrid: "grid grid-cols-1 md:grid-cols-2 gap-3",
     termItem: "flex items-center gap-2",
     termCheckbox: "h-4 w-4",
     termLabel: "text-sm text-gray-700"
@@ -260,19 +260,19 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="w-[1000px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[800px] p-4 max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Add Seller</DialogTitle>
+                    <DialogTitle className="text-lg font-medium">Add Seller</DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Merchant Details Section */}
                     <div className={styles.formSection}>
                         <h3 className={styles.sectionTitle}>Merchant Details</h3>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
-                                    <Label>Merchant Name</Label>
+                                    <Label className="text-sm font-medium">Merchant Name</Label>
                                     <Input
                                         value={merchantData.name}
                                         onChange={(e) => setMerchantData(prev => ({
@@ -280,12 +280,12 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                             name: e.target.value
                                         }))}
                                         placeholder="e.g., Amazon, Best Buy"
-                                        className="truncate"
+                                        className="h-9 mt-1.5 truncate"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <Label>Product URL (Optional)</Label>
+                                    <Label className="text-sm font-medium">Product URL (Optional)</Label>
                                     <Input
                                         value={merchantData.url || ''}
                                         onChange={(e) => setMerchantData(prev => ({
@@ -293,22 +293,22 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                             url: e.target.value
                                         }))}
                                         placeholder="https://"
-                                        className="truncate"
+                                        className="h-9 mt-1.5 truncate"
                                     />
                                 </div>
                             </div>
 
                             {/* Second row - Purchase terms with optimized proportions */}
-                            <div className="grid grid-cols-12 gap-4">
+                            <div className="grid grid-cols-12 gap-3">
                                 <div className="col-span-3">
-                                    <Label>Shipping Cost</Label>
+                                    <Label className="text-sm font-medium">Shipping Cost</Label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                        <span className={styles.currencySymbol}>$</span>
                                         <Input
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            className="pl-7 w-full"
+                                            className="h-9 pl-7 w-full"
                                             value={merchantData.shippingCost}
                                             onChange={(e) => setMerchantData(prev => ({
                                                 ...prev,
@@ -318,14 +318,14 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="col-span-3">
-                                    <Label>Sales Tax Rate</Label>
+                                    <Label className="text-sm font-medium">Sales Tax Rate</Label>
                                     <div className="relative">
                                         <Input
                                             type="number"
                                             min="0"
                                             max="100"
                                             step="0.01"
-                                            className="pr-7 w-full"
+                                            className="h-9 pr-7 w-full"
                                             value={merchantData.taxRate}
                                             onChange={(e) => setMerchantData(prev => ({
                                                 ...prev,
@@ -336,14 +336,14 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="col-span-6">
-                                    <Label>Return Policy</Label>
+                                    <Label className="text-sm font-medium">Return Policy</Label>
                                     <Input
                                         value={merchantData.returnPolicy}
                                         onChange={(e) => setMerchantData(prev => ({
                                             ...prev,
                                             returnPolicy: e.target.value
                                         }))}
-                                        className="w-full"
+                                        className="h-9 w-full"
                                         placeholder="e.g., 30 days, no returns, store credit only"
                                     />
                                 </div>
@@ -354,16 +354,16 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                     {/* Pricing Section */}
                     <div className={styles.formSection}>
                         <h3 className={styles.sectionTitle}>Pricing</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <Label>List Price</Label>
+                                <Label className="text-sm font-medium">List Price</Label>
                                 <div className={styles.priceInputContainer}>
                                     <span className={styles.currencySymbol}>$</span>
                                     <Input
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        className={styles.priceInput}
+                                        className="h-9 pl-7 w-full"
                                         value={merchantData.listPrice || ''}
                                         onChange={(e) => setMerchantData(prev => ({
                                             ...prev,
@@ -374,14 +374,14 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                 </div>
                             </div>
                             <div>
-                                <Label>Sale Price</Label>
+                                <Label className="text-sm font-medium">Sale Price</Label>
                                 <div className={styles.priceInputContainer}>
                                     <span className={styles.currencySymbol}>$</span>
                                     <Input
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        className={styles.priceInput}
+                                        className="h-9 pl-7 w-full"
                                         value={merchantData.salePrice || ''}
                                         onChange={(e) => setMerchantData(prev => ({
                                             ...prev,
@@ -402,11 +402,11 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                     </div>
 
                     {/* Add/Edit Savings and Price Breakdown Section */}
-                    <div className="grid grid-cols-2 gap-6 border-t pt-4">
+                    <div className="grid grid-cols-2 gap-4 border-t pt-4">
                         {/* Add/Edit Savings Panel */}
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-medium">Add/Edit Savings</h3>
+                                <h3 className="text-base font-medium">Add/Edit Savings</h3>
                                 <Select
                                     value={activeSaving?.type || ''}
                                     onValueChange={(value: SavingsType) => {
@@ -417,7 +417,7 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                         });
                                     }}
                                 >
-                                    <SelectTrigger className="w-[200px]">
+                                    <SelectTrigger className="w-[180px] h-9">
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -432,15 +432,16 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
 
                             {/* Dynamic Savings Form */}
                             {activeSaving && (
-                                <div className="space-y-4 bg-gray-50 p-4 rounded-md">
+                                <div className="space-y-3 bg-gray-50 p-3 rounded-md">
                                     {/* Common Fields */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <Label>Amount</Label>
+                                            <Label className="text-sm font-medium">Amount</Label>
                                             <Input
                                                 type="number"
                                                 step="0.01"
                                                 min="0"
+                                                className="h-9"
                                                 value={activeSaving.amount || ''}
                                                 onChange={(e) => setActiveSaving(prev => ({
                                                     ...prev!,
@@ -449,7 +450,7 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                             />
                                         </div>
                                         <div>
-                                            <Label>Type</Label>
+                                            <Label className="text-sm font-medium">Type</Label>
                                             <Select
                                                 value={activeSaving.amountType || 'percentage'}
                                                 onValueChange={(value: 'fixed' | 'percentage') => {
@@ -473,7 +474,7 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                     {/* Type-Specific Fields */}
                                     {activeSaving.type === 'exclusive' && (
                                         <div>
-                                            <Label>Description</Label>
+                                            <Label className="text-sm font-medium">Description</Label>
                                             <Input
                                                 placeholder="e.g., Member Price, Student Discount"
                                                 value={(activeSaving as Partial<ExclusiveSaving>).description || ''}
@@ -486,78 +487,49 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                     )}
 
                                     {activeSaving.type === 'coupon' && (
-                                        <div className="space-y-4">
-                                            <div>
-                                                <Label>Coupon Code</Label>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={activeSaving.amountType === 'percentage' ? 'default' : 'outline'}
+                                                    onClick={() => setActiveSaving(prev => ({
+                                                        ...prev!,
+                                                        amountType: 'percentage'
+                                                    }))}
+                                                >
+                                                    %
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={activeSaving.amountType === 'fixed' ? 'default' : 'outline'}
+                                                    onClick={() => setActiveSaving(prev => ({
+                                                        ...prev!,
+                                                        amountType: 'fixed'
+                                                    }))}
+                                                >
+                                                    $
+                                                </Button>
+                                            </div>
+                                            <div className="relative">
+                                                {activeSaving.amountType === 'fixed' && (
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                                )}
                                                 <Input
-                                                    placeholder="Enter code"
-                                                    value={(activeSaving as Partial<CouponSaving>).code || ''}
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    className={activeSaving.amountType === 'fixed' ? 'pl-7' : ''}
+                                                    value={activeSaving.amount || ''}
                                                     onChange={(e) => setActiveSaving(prev => ({
                                                         ...prev!,
-                                                        code: e.target.value
+                                                        amount: parseFloat(e.target.value) || 0
                                                     }))}
                                                 />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant={activeSaving.amountType === 'percentage' ? 'default' : 'outline'}
-                                                        onClick={() => setActiveSaving(prev => ({
-                                                            ...prev!,
-                                                            amountType: 'percentage'
-                                                        }))}
-                                                    >
-                                                        %
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant={activeSaving.amountType === 'fixed' ? 'default' : 'outline'}
-                                                        onClick={() => setActiveSaving(prev => ({
-                                                            ...prev!,
-                                                            amountType: 'fixed'
-                                                        }))}
-                                                    >
-                                                        $
-                                                    </Button>
-                                                </div>
-                                                <div className="relative">
-                                                    {activeSaving.amountType === 'fixed' && (
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                                                    )}
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        className={activeSaving.amountType === 'fixed' ? 'pl-7' : ''}
-                                                        value={activeSaving.amount || ''}
-                                                        onChange={(e) => setActiveSaving(prev => ({
-                                                            ...prev!,
-                                                            amount: parseFloat(e.target.value) || 0
-                                                        }))}
-                                                    />
-                                                    {activeSaving.amountType === 'percentage' && (
-                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <Label>Minimum Spend (Optional)</Label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                                                    <Input
-                                                        type="number"
-                                                        className="pl-7"
-                                                        placeholder="0.00"
-                                                        value={(activeSaving as Partial<CouponSaving>).minimumSpend || ''}
-                                                        onChange={(e) => setActiveSaving(prev => ({
-                                                            ...prev!,
-                                                            minimumSpend: parseFloat(e.target.value) || undefined
-                                                        }))}
-                                                    />
-                                                </div>
+                                                {activeSaving.amountType === 'percentage' && (
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -642,9 +614,9 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                         </div>
 
                         {/* Price Breakdown Panel */}
-                        <div className="space-y-4">
-                            <h3 className="font-medium">Price Breakdown</h3>
-                            <div className="space-y-2 bg-gray-50 p-4 rounded-md">
+                        <div className="space-y-3">
+                            <h3 className="text-base font-medium">Price Breakdown</h3>
+                            <div className="space-y-2 bg-gray-50 p-3 rounded-md">
                                 <div className="flex justify-between text-sm">
                                     <span>List Price:</span>
                                     <span className={inputStyles.price}>${merchantData.listPrice.toFixed(2)}</span>
@@ -704,7 +676,7 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
 
                     {/* Notes Section */}
                     <div className="border-t pt-4">
-                        <Label>Additional Notes</Label>
+                        <Label className="text-sm font-medium">Additional Notes</Label>
                         <Textarea
                             value={merchantData.notes || ''}
                             onChange={(e) => setMerchantData(prev => ({
@@ -712,16 +684,16 @@ const MerchantModal: React.FC<MerchantModalProps> = ({
                                 notes: e.target.value
                             }))}
                             placeholder="Any additional details about this seller or offer"
-                            className="h-20"
+                            className="h-20 mt-1.5"
                         />
                     </div>
 
                     {/* Form Actions */}
                     <div className="flex justify-end gap-2 pt-4 border-t">
-                        <Button type="button" variant="outline" onClick={onClose}>
+                        <Button className="h-9" variant="outline" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button type="submit">
+                        <Button className="h-9" type="submit">
                             Add Seller
                         </Button>
                     </div>

@@ -1,6 +1,6 @@
 'use client';
-import PurchasePlannerMockup from './components/PurchasePlannerMockup';
+import StackPlannerPage from './components/StackPlannerPage';
 
 export default function PlannerPage() {
-    return <PurchasePlannerMockup />;
+    return <StackPlannerPage />;
 }

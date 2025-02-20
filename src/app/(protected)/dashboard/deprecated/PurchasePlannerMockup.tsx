@@ -26,10 +26,11 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { LucideIcon } from 'lucide-react';
-import MerchantModal from './MerchantModal';
-import ProductCard from './ProductCard';
-import ProductListItem from './ProductListItem';
+import MerchantModal from '../planner/components/MerchantModal';
+import ProductCardComponent from '../planner/components/ProductCard';
+import ProductListItem from '../planner/components/ProductListItem';
 import { formatCurrency } from '@/utils/formatters';
+import { cn } from '@/lib/utils';
 
 // Core types
 interface PurchaseItem {
@@ -147,13 +148,13 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
     destructive = false
 }) => (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[500px] p-4">
             <DialogHeader>
-                <DialogTitle>{title}</DialogTitle>
+                <DialogTitle className="text-lg font-medium">{title}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 py-2">
                 {children}
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-2">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
@@ -285,6 +286,7 @@ const formatTax = (tax: number | 'none' | 'unknown'): string => {
 // Update MerchantCard interface
 interface MerchantCardProps extends MerchantOption {
     onRemove: () => void;
+    className?: string;
 }
 
 const MerchantCard: React.FC<MerchantCardProps> = ({
@@ -296,9 +298,10 @@ const MerchantCard: React.FC<MerchantCardProps> = ({
     tax,
     returnPolicy,
     rewards,
-    onRemove
+    onRemove,
+    className
 }) => (
-    <Card className="relative">
+    <Card className={`relative ${className || ''}`}>
         {bestValue && (
             <Badge className="absolute -top-2 -right-2 bg-green-100 text-green-800">
                 Best Value
@@ -363,6 +366,190 @@ const MerchantCard: React.FC<MerchantCardProps> = ({
                     Mark Purchased
                 </Button>
             )}
+        </CardContent>
+    </Card>
+);
+
+// First, let's define our spacing and typography constants at the top
+const ui = {
+    spacing: {
+        tight: 'gap-1',    // 4px
+        base: 'gap-2',     // 8px
+        loose: 'gap-3',    // 12px
+        section: 'gap-4'   // 16px
+    },
+    type: {
+        xs: 'text-xs',
+        sm: 'text-sm',
+        base: 'text-base font-medium',
+        meta: 'text-xs text-gray-500'
+    }
+};
+
+// First, let's define our typography system
+const typography = {
+    primary: "text-base font-semibold",      // 16px - Main navigation
+    title: "text-[15px] font-medium leading-snug",  // 15px - Product titles
+    secondary: "text-sm",                     // 14px - Supporting info
+    merchant: "text-[13px] font-medium",      // 13px - Merchant names
+    meta: "text-xs text-gray-500",           // 12px - Metadata
+};
+
+// Update the ProductCard component
+interface ProductCardProps {
+    product: ProductOption;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    selectedItem: PurchaseItem;
+    setEditingOptionId: (id: string | null) => void;
+    showMerchantModal: boolean;
+    setShowMerchantModal: (show: boolean) => void;
+    setShowRemoveConfirmModal: (show: boolean) => void;
+    handleUpdateItemStatus: (itemId: string, optionId: string, status: ProductOption['status']) => void;
+    onStatusChange: (productId: string, newStatus: ProductOption['status']) => void;
+    setShowProductModal: (show: boolean) => void;
+    className?: string;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({
+    product,
+    isSelected,
+    onSelect,
+    selectedItem,
+    setEditingOptionId,
+    showMerchantModal,
+    setShowMerchantModal,
+    setShowRemoveConfirmModal,
+    handleUpdateItemStatus,
+    onStatusChange,
+    setShowProductModal,
+    className
+}) => (
+    <Card className={cn(
+        "relative",
+        isSelected && "ring-2 ring-blue-500",
+        className
+    )}>
+        <CardContent className="p-3">
+            {/* Header with title and actions */}
+            <div className="flex justify-between items-start gap-4 mb-3">
+                <div className="min-w-0 flex-1">
+                    <h3 className={typography.title}>{product.name}</h3>
+                    <div className={cn(typography.secondary, "text-gray-600")}>
+                        Model: {product.modelNumber}
+                    </div>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setShowMerchantModal(true)}
+                    >
+                        Add Seller
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        variant={product.status === 'shortlisted' ? 'default' : 'outline'}
+                        onClick={() => onStatusChange(product.id, 'shortlisted')}
+                    >
+                        <Star className="h-3 w-3 mr-1" />
+                        Shortlist
+                    </Button>
+                </div>
+            </div>
+
+            {/* Main content grid */}
+            <div className="flex gap-4">
+                {/* Image container */}
+                <div className="w-48 h-32 flex-shrink-0">
+                    <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover rounded-md"
+                    />
+                </div>
+
+                {/* Info columns */}
+                <div className="flex-1 grid grid-cols-2 gap-x-6 gap-y-2">
+                    {/* Specs column */}
+                    <div className="space-y-1">
+                        {product.specs.map((spec, index) => (
+                            <div key={index} className={typography.meta}>
+                                {spec}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Pricing column */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between items-baseline space-x-2">
+                            <span className={typography.meta}>MSRP:</span>
+                            <span className={cn(typography.secondary, "line-through")}>
+                                {formatCurrency(product.price.msrp)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline space-x-2">
+                            <span className={typography.meta}>Price:</span>
+                            <span className={typography.merchant}>
+                                {formatCurrency(product.price.current)}
+                            </span>
+                        </div>
+                        {product.price.msrp > product.price.current && (
+                            <div className="flex justify-between text-green-600">
+                                <span>Savings:</span>
+                                <span>
+                                    {Math.round((product.price.msrp - product.price.current) / product.price.msrp * 100)}%
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer with reviews and actions */}
+            <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    {product.reviews.map((review, index) => (
+                        <a
+                            key={index}
+                            href={review.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                            {review.source}
+                        </a>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                            setEditingOptionId(product.id);
+                            setShowProductModal(true);
+                        }}
+                    >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                        onClick={() => {
+                            setEditingOptionId(product.id);
+                            setShowRemoveConfirmModal(true);
+                        }}
+                    >
+                        <Trash className="h-3 w-3 mr-1" />
+                        Remove
+                    </Button>
+                </div>
+            </div>
         </CardContent>
     </Card>
 );
@@ -718,13 +905,13 @@ const PurchasePlannerMockup: React.FC = () => {
     };
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
             {/* Metrics Cards */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-3">
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-3">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">1</div>
+                            <div className="text-lg font-bold mb-1">1</div>
                             <p className="text-sm text-muted-foreground">Active Plans</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 1 High Priority
@@ -734,9 +921,9 @@ const PurchasePlannerMockup: React.FC = () => {
                 </Card>
 
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-3">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">$649</div>
+                            <div className="text-lg font-bold mb-1">$649</div>
                             <p className="text-sm text-muted-foreground">Total Planned</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Next: Standing Desk ($700)
@@ -746,9 +933,9 @@ const PurchasePlannerMockup: React.FC = () => {
                 </Card>
 
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-3">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">19%</div>
+                            <div className="text-lg font-bold mb-1">19%</div>
                             <p className="text-sm text-muted-foreground">Average Savings</p>
                             <div className="w-full bg-gray-100 h-2 rounded-full mt-2">
                                 <div
@@ -761,9 +948,9 @@ const PurchasePlannerMockup: React.FC = () => {
                 </Card>
 
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-3">
                         <div className="flex flex-col items-center text-center">
-                            <div className="text-2xl font-bold mb-1">0/1</div>
+                            <div className="text-lg font-bold mb-1">0/1</div>
                             <p className="text-sm text-muted-foreground">Plans Optimized</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 25% or more Below MSRP
@@ -774,39 +961,36 @@ const PurchasePlannerMockup: React.FC = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="h-[calc(100vh-12rem)]">
+            <div className="h-[calc(100vh-9rem)]">
                 <div className="flex h-full">
-                    {/* Priority Rail - 15% */}
-                    <div className="w-60 flex-shrink-0 border-r bg-white">
-                        <div className="p-4 flex flex-col gap-4 border-b">
+                    {/* Priority Rail - Reduced width */}
+                    <div className="w-52 flex-shrink-0 border-r bg-white">
+                        <div className="p-3 flex flex-col gap-3 border-b">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-semibold text-sm">Purchase Plans</h2>
+                                <h2 className={typography.primary}>Purchase Plans</h2>
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-8 w-8 p-0"
+                                    className="h-7 w-7 p-0"
                                     onClick={() => setShowNeedModal(true)}
                                 >
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </div>
                             <Input
-                                className="text-sm"
+                                className={cn(typography.secondary, "h-8")}
                                 placeholder="Search across all items..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="overflow-auto h-[calc(100%-88px)]">
-                            <div className="p-2 space-y-4">
-                                <div className="space-y-6">
+                        <div className="overflow-auto h-[calc(100%-5.5rem)]">
+                            <div className="p-2 space-y-3">
+                                <div className="space-y-4">
                                     {/* Active Plans */}
                                     {Object.entries(itemsByPriority).map(([priority, priorityItems]) => (
-                                        <div key={priority} className={`space-y-1`}>
-                                            <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
-                                                {priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                                {priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                                {priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
+                                        <div key={priority} className="space-y-1">
+                                            <div className={cn(typography.meta, "px-2 py-1 flex items-center gap-2 uppercase")}>
                                                 {priority}
                                             </div>
                                             {priorityItems
@@ -815,8 +999,11 @@ const PurchasePlannerMockup: React.FC = () => {
                                                 .map(item => (
                                                     <div
                                                         key={item.id}
-                                                        className={`px-2 py-1.5 rounded-md text-sm cursor-pointer
-                                                        ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`}
+                                                        className={cn(
+                                                            typography.secondary,
+                                                            "px-2 py-1.5 rounded-md cursor-pointer",
+                                                            selectedItemId === item.id ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100"
+                                                        )}
                                                         onClick={() => handleSelectItem(item.id)}
                                                     >
                                                         {item.name}
@@ -827,8 +1014,7 @@ const PurchasePlannerMockup: React.FC = () => {
 
                                     {/* Archived Plans */}
                                     <div className="mt-8">
-                                        <div className="px-2 py-1 flex items-center gap-2 text-xs font-medium text-gray-500 uppercase">
-                                            <Bookmark className="h-4 w-4 text-gray-500" />
+                                        <div className={cn(typography.meta, "px-2 py-1 flex items-center gap-2 uppercase")}>
                                             Archived Plans
                                         </div>
                                         {items
@@ -837,7 +1023,10 @@ const PurchasePlannerMockup: React.FC = () => {
                                             .map(item => (
                                                 <div
                                                     key={item.id}
-                                                    className="px-2 py-1.5 rounded-md text-sm cursor-pointer text-gray-500 hover:bg-gray-100"
+                                                    className={cn(
+                                                        typography.secondary,
+                                                        "px-2 py-1.5 rounded-md cursor-pointer text-gray-500 hover:bg-gray-100"
+                                                    )}
                                                     onClick={() => handleSelectItem(item.id)}
                                                 >
                                                     {item.name}
@@ -853,125 +1042,71 @@ const PurchasePlannerMockup: React.FC = () => {
                     <div className="flex-1 border-r bg-white overflow-hidden">
                         {selectedItem ? (
                             <div className="h-full flex flex-col">
-                                <div className="p-4 border-b flex-shrink-0">
-                                    {/* Top line with main info */}
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <h2 className="text-xl font-semibold">{selectedItem.name}</h2>
-                                            <div className="flex items-center gap-2 text-gray-600">
-                                                {selectedItem.priority === 'high' && <ArrowUpCircle className="h-4 w-4 text-red-500" />}
-                                                {selectedItem.priority === 'normal' && <Circle className="h-4 w-4 text-amber-500" />}
-                                                {selectedItem.priority === 'low' && <MinusCircle className="h-4 w-4 text-blue-500" />}
-                                                <span>{selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority</span>
-                                                <span>•</span>
-                                                <span>Budget: {formatCurrency(selectedItem.targetPrice.max)}</span>
-                                            </div>
+                                <div className="p-3 border-b">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h2 className={typography.title}>{selectedItem.name}</h2>
+                                        <div className={cn(typography.secondary, "text-gray-600")}>
+                                            {selectedItem.priority.charAt(0).toUpperCase() + selectedItem.priority.slice(1)} Priority
+                                        </div>
+                                        <div className={cn(typography.secondary, "text-gray-600")}>
+                                            •
+                                        </div>
+                                        <div className={cn(typography.secondary, "text-gray-600")}>
+                                            Budget: {formatCurrency(selectedItem.targetPrice.max)}
                                         </div>
                                     </div>
-
-                                    {/* Bottom line with all controls */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            {/* Filter tabs */}
-                                            <Tabs
-                                                value={activeTab}
-                                                onValueChange={(value) => setActiveTab(value as 'all' | 'shortlist' | 'rejected')}
-                                            >
-                                                <TabsList>
-                                                    <TabsTrigger value="all" className="flex items-center gap-2">
-                                                        <Layers className="h-4 w-4" />
-                                                        <span>All Options</span>
-                                                    </TabsTrigger>
-                                                    <TabsTrigger value="shortlist" className="flex items-center gap-2">
-                                                        <Star className="h-4 w-4" />
-                                                        <span>Shortlist</span>
-                                                    </TabsTrigger>
-                                                    <TabsTrigger value="rejected" className="flex items-center gap-2">
-                                                        <Ban className="h-4 w-4" />
-                                                        <span>Rejected</span>
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </Tabs>
-
-                                            {/* View type tabs */}
-                                            <Tabs
-                                                value={viewType}
-                                                onValueChange={(value) => setViewType(value as 'card' | 'list')}
-                                            >
-                                                <TabsList>
-                                                    <TabsTrigger value="card" className="flex items-center gap-2">
-                                                        <LayoutGrid className="h-4 w-4" />
-                                                        <span>Card View</span>
-                                                    </TabsTrigger>
-                                                    <TabsTrigger value="list" className="flex items-center gap-2">
-                                                        <List className="h-4 w-4" />
-                                                        <span>List View</span>
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </Tabs>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            {selectedItem?.status === 'archived' ? (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        if (!selectedItem) return;
-                                                        setItems(prevItems => prevItems.map(item =>
-                                                            item.id === selectedItem.id
-                                                                ? { ...item, status: 'active' }
-                                                                : item
-                                                        ));
-                                                    }}
-                                                >
-                                                    <ArrowUpCircle className="h-4 w-4 mr-2" />
-                                                    Reactivate Plan
-                                                </Button>
-                                            ) : (
-                                                <PlanActions
-                                                    onEdit={() => {
-                                                        setEditingItemId(selectedItem.id);
-                                                        setNewNeed({
-                                                            name: selectedItem.name,
-                                                            priority: selectedItem.priority,
-                                                            targetPrice: selectedItem.targetPrice,
-                                                            notes: selectedItem.notes || ''
-                                                        });
-                                                        setShowNeedModal(true);
-                                                    }}
-                                                    onArchive={() => {
-                                                        setItemToAction(selectedItem.id);
-                                                        setShowArchiveConfirm(true);
-                                                    }}
-                                                    onExport={() => {
-                                                    }}
-                                                    onDelete={() => {
-                                                        setItemToAction(selectedItem.id);
-                                                        setShowDeleteConfirm(true);
-                                                    }}
-                                                />
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                onClick={() => setShowProductModal(true)}
-                                                className="bg-blue-600 hover:bg-blue-700"
-                                            >
-                                                Add Option
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* Notes (if any) */}
-                                    {selectedItem.notes && (
-                                        <div className="mt-4 text-sm text-gray-600 flex items-start gap-2">
-                                            <MessageSquare className="h-4 w-4 text-gray-400 mt-1" />
-                                            <span>{selectedItem.notes}</span>
-                                        </div>
-                                    )}
                                 </div>
-                                <div className="overflow-auto flex-1 p-4">
-                                    <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Tabs
+                                            value={activeTab}
+                                            onValueChange={(value) => setActiveTab(value as 'all' | 'shortlist' | 'rejected')}
+                                        >
+                                            <TabsList className="h-7">
+                                                <TabsTrigger value="all" className="text-xs px-2">
+                                                    <Layers className="h-3 w-3 mr-1" />
+                                                    All Options
+                                                </TabsTrigger>
+                                                <TabsTrigger value="shortlist" className="text-xs px-2">
+                                                    <Star className="h-3 w-3 mr-1" />
+                                                    Shortlist
+                                                </TabsTrigger>
+                                                <TabsTrigger value="rejected" className="text-xs px-2">
+                                                    <Ban className="h-3 w-3 mr-1" />
+                                                    Rejected
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+
+                                        <Tabs
+                                            value={viewType}
+                                            onValueChange={(value) => setViewType(value as 'card' | 'list')}
+                                        >
+                                            <TabsList className="h-7">
+                                                <TabsTrigger value="card" className="text-xs px-2">
+                                                    <LayoutGrid className="h-3 w-3 mr-1" />
+                                                    Card View
+                                                </TabsTrigger>
+                                                <TabsTrigger value="list" className="text-xs px-2">
+                                                    <List className="h-3 w-3 mr-1" />
+                                                    List View
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setShowProductModal(true)}
+                                            className="h-7 text-xs"
+                                        >
+                                            Add Option
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="overflow-auto flex-1 p-3">
+                                    <div className="space-y-3">
                                         {selectedItem.options
                                             .filter(option => {
                                                 if (activeTab === 'all') return true;
@@ -980,7 +1115,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                             })
                                             .map(option => (
                                                 viewType === 'card' ? (
-                                                    <ProductCard
+                                                    <ProductCardComponent
                                                         key={option.id}
                                                         product={option}
                                                         isSelected={option.id === selectedItem.selectedOption}
@@ -998,7 +1133,8 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}
                                                         onStatusChange={handleProductStatusChange}
-                                                        setShowProductModal={setShowProductModal}  // Add this line
+                                                        setShowProductModal={setShowProductModal}
+                                                        className="p-3"
                                                     />
                                                 ) : (
                                                     <ProductListItem
@@ -1018,8 +1154,9 @@ const PurchasePlannerMockup: React.FC = () => {
                                                         setShowMerchantModal={setShowMerchantModal}
                                                         setShowRemoveConfirmModal={setShowRemoveConfirmModal}
                                                         handleUpdateItemStatus={handleUpdateItemStatus}
-                                                        onStatusChange={handleProductStatusChange}  // Add this line
-                                                        setShowProductModal={setShowProductModal}   // Add this line too
+                                                        onStatusChange={handleProductStatusChange}
+                                                        setShowProductModal={setShowProductModal}
+                                                        className="p-2"
                                                     />
                                                 )
                                             ))}
@@ -1033,29 +1170,29 @@ const PurchasePlannerMockup: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Merchant Panel - 30% */}
-                    <div className="w-96 flex-shrink-0 bg-white">
+                    {/* Merchant Panel - Reduced width */}
+                    <div className="w-80 flex-shrink-0 bg-white">
                         {selectedOption ? (
                             <div className="h-full flex flex-col">
-                                <div className="p-4 border-b flex-shrink-0">
-                                    <h2 className="font-semibold mb-6">{selectedOption.name}</h2>
+                                <div className="p-3 border-b">
+                                    <h2 className={typography.title}>{selectedOption.name}</h2>
                                     <div className="space-y-1">
                                         <div className="text-sm flex justify-between">
-                                            <span className="text-gray-500">Cash Price:</span>
-                                            <span className="font-medium">{formatCurrency(selectedOption.merchants[0]?.price || 0)}</span>
+                                            <span className={typography.meta}>Cash Price:</span>
+                                            <span className={typography.merchant}>{formatCurrency(selectedOption.merchants[0]?.price || 0)}</span>
                                         </div>
                                         <div className="text-sm flex justify-between">
-                                            <span className="text-gray-500">Net Price:</span>
-                                            <span className="text-green-600 font-medium">{formatCurrency(selectedOption.merchants[0]?.netPrice || 0)}</span>
+                                            <span className={typography.meta}>Net Price:</span>
+                                            <span className={typography.merchant}>{formatCurrency(selectedOption.merchants[0]?.netPrice || 0)}</span>
                                         </div>
                                         <div className="text-sm flex justify-between">
-                                            <span className="text-gray-500">Total Savings:</span>
-                                            <span className="text-green-600 font-medium">{formatCurrency((selectedOption.merchants[0]?.price || 0) - (selectedOption.merchants[0]?.netPrice || 0))}</span>
+                                            <span className={typography.meta}>Total Savings:</span>
+                                            <span className={typography.merchant}>{formatCurrency((selectedOption.merchants[0]?.price || 0) - (selectedOption.merchants[0]?.netPrice || 0))}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="overflow-auto flex-1 p-4">
-                                    <div className="space-y-4">
+                                <div className="overflow-auto flex-1 p-3">
+                                    <div className="space-y-3">
                                         {selectedOption.merchants.map((merchant) => (
                                             <MerchantCard
                                                 key={merchant.id}
@@ -1064,6 +1201,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                                     setEditingOptionId(merchant.id);
                                                     setShowRemoveConfirmModal(true);
                                                 }}
+                                                className="p-3"
                                             />
                                         ))}
                                     </div>
@@ -1080,15 +1218,16 @@ const PurchasePlannerMockup: React.FC = () => {
 
             {/* Add Product Modal */}
             <Dialog open={showProductModal} onOpenChange={setShowProductModal}>
-                <DialogContent className="sm:max-w-xl">
+                <DialogContent className="max-w-[800px] p-4 max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Add Product Option</DialogTitle>
+                        <DialogTitle className="text-lg font-medium">Add Product Option</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         {/* Product Name */}
-                        <div>
-                            <Label>Product Name</Label>
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                            <Label className="text-sm font-medium text-gray-700">Product Name</Label>
                             <Input
+                                className="h-9 mt-1.5"
                                 value={newProduct.name}
                                 onChange={(e) => setNewProduct(prev => ({
                                     ...prev,
@@ -1098,11 +1237,12 @@ const PurchasePlannerMockup: React.FC = () => {
                             />
                         </div>
 
-                        {/* Brand and Model Number (side by side) */}
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Brand and Model Number */}
+                        <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-gray-200">
                             <div>
-                                <Label>Brand</Label>
+                                <Label className="text-sm font-medium text-gray-700">Brand</Label>
                                 <Input
+                                    className="h-9 mt-1.5"
                                     value={newProduct.brand}
                                     onChange={(e) => setNewProduct(prev => ({
                                         ...prev,
@@ -1112,8 +1252,9 @@ const PurchasePlannerMockup: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Model Number</Label>
+                                <Label className="text-sm font-medium text-gray-700">Model Number</Label>
                                 <Input
+                                    className="h-9 mt-1.5"
                                     value={newProduct.modelNumber}
                                     onChange={(e) => setNewProduct(prev => ({
                                         ...prev,
@@ -1125,9 +1266,10 @@ const PurchasePlannerMockup: React.FC = () => {
                         </div>
 
                         {/* Image URL */}
-                        <div>
-                            <Label>Image URL</Label>
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                            <Label className="text-sm font-medium text-gray-700">Image URL</Label>
                             <Input
+                                className="h-9 mt-1.5"
                                 value={newProduct.imageUrl}
                                 onChange={(e) => setNewProduct(prev => ({
                                     ...prev,
@@ -1138,10 +1280,11 @@ const PurchasePlannerMockup: React.FC = () => {
                         </div>
 
                         {/* Pricing */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-gray-200">
                             <div>
-                                <Label>MSRP</Label>
+                                <Label className="text-sm font-medium text-gray-700">MSRP</Label>
                                 <Input
+                                    className="h-9 mt-1.5"
                                     type="number"
                                     value={newProduct.price.msrp || ''}
                                     onChange={(e) => setNewProduct(prev => ({
@@ -1154,8 +1297,9 @@ const PurchasePlannerMockup: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Current Price</Label>
+                                <Label className="text-sm font-medium text-gray-700">Current Price</Label>
                                 <Input
+                                    className="h-9 mt-1.5"
                                     type="number"
                                     value={newProduct.price.current || ''}
                                     onChange={(e) => setNewProduct(prev => ({
@@ -1169,24 +1313,27 @@ const PurchasePlannerMockup: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Specifications (now a textarea) */}
-                        <Textarea
-                            value={newProduct.specs.join('\n')}
-                            onChange={(e) => setNewProduct(prev => ({
-                                ...prev,
-                                specs: e.target.value.split('\n').filter(line => line.trim())
-                            }))}
-                            placeholder="Enter product specifications (one per line)"
-                            className="min-h-[80px] max-h-[300px]"
-                        />
-
+                        {/* Specifications */}
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                            <Label className="text-sm font-medium text-gray-700">Specifications</Label>
+                            <Textarea
+                                className="mt-1.5 min-h-[80px] max-h-[200px]"
+                                value={newProduct.specs.join('\n')}
+                                onChange={(e) => setNewProduct(prev => ({
+                                    ...prev,
+                                    specs: e.target.value.split('\n').filter(line => line.trim())
+                                }))}
+                                placeholder="Enter product specifications (one per line)"
+                            />
+                        </div>
 
                         {/* Reviews */}
-                        <div>
-                            <Label> Reviews</Label>
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                            <Label className="text-sm font-medium text-gray-700">Reviews</Label>
                             {newProduct.reviews.map((review, index) => (
-                                <div key={index} className="flex gap-2 mt-2">
+                                <div key={index} className="flex gap-3 mt-2">
                                     <Input
+                                        className="h-9"
                                         placeholder="Source"
                                         value={review.source}
                                         onChange={(e) => {
@@ -1196,6 +1343,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                         }}
                                     />
                                     <Input
+                                        className="h-9"
                                         placeholder="URL"
                                         value={review.url}
                                         onChange={(e) => {
@@ -1206,6 +1354,7 @@ const PurchasePlannerMockup: React.FC = () => {
                                     />
                                     <Button
                                         variant="outline"
+                                        className="h-9 px-3"
                                         onClick={() => {
                                             if (index === newProduct.reviews.length - 1) {
                                                 setNewProduct(prev => ({
@@ -1227,18 +1376,21 @@ const PurchasePlannerMockup: React.FC = () => {
                         </div>
 
                         {/* Notes */}
-                        <Textarea
-                            value={newProduct.notes}
-                            onChange={(e) => setNewProduct(prev => ({
-                                ...prev,
-                                notes: e.target.value
-                            }))}
-                            placeholder="Add any additional notes about this product"
-                            className="min-h-[80px] max-h-[300px]"
-                        />
+                        <div className="mb-4">
+                            <Label className="text-sm font-medium text-gray-700">Notes</Label>
+                            <Textarea
+                                className="mt-1.5 min-h-[80px] max-h-[200px]"
+                                value={newProduct.notes}
+                                onChange={(e) => setNewProduct(prev => ({
+                                    ...prev,
+                                    notes: e.target.value
+                                }))}
+                                placeholder="Add any additional notes about this product"
+                            />
+                        </div>
 
                         {/* Action Buttons */}
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowProductModal(false)}>
                                 Cancel
                             </Button>
@@ -1251,13 +1403,13 @@ const PurchasePlannerMockup: React.FC = () => {
             </Dialog>
             {/* Need Management Modal */}
             <Dialog open={showNeedModal} onOpenChange={setShowNeedModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="max-w-[600px] p-4">
                     <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="text-lg font-medium">
                             {editingItemId ? 'Edit Item' : 'Add New Item'}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 py-2">
                         <div>
                             <Label>Name</Label>
                             <Input

@@ -1,3 +1,66 @@
+// src/types/index.ts
+
+// src/app/(protected)/dashboard/planner/types.ts
+
+export interface PurchasePlan {
+    id: string;
+    name: string;
+    priority: 'HIGH' | 'NORMAL' | 'LOW';
+    budget: number;
+    targetDate?: Date;
+    category?: string;
+}
+
+export interface ProductPrice {
+    msrp: number;
+    current: number;
+}
+
+export interface ProductOption {
+    id: string;
+    name: string;
+    type: 'premium' | 'budget';
+    image: string;
+    specs: string[];
+    brand: string;
+    modelNumber: string;
+    price: {
+        msrp: number;
+        current: number;
+    };
+    notes: string;
+    selected?: boolean;
+    // Add missing required properties
+    reviews: {
+        rating: number;
+        count: number;
+        source: string;
+    };
+    status: 'in_stock' | 'low_stock' | 'out_of_stock';
+    merchant: {
+        name: string;
+        reliability: 'verified' | 'unverified';
+        fulfillment: 'direct' | 'marketplace';
+    };
+}
+
+export interface StackComponent {
+    id: string;
+    type: 'credit-card' | 'gift-card' | 'store-reward' | 'portal' | 'coupon';
+    name: string;
+    value: number;
+    details?: string;
+}
+
+export interface Stack {
+    id: string;
+    name: string;
+    merchant: string;
+    listPrice: number;
+    salePrice: number;
+    components: StackComponent[];
+}
+
 export interface MerchantOption {
     id?: string;
     name: string;
@@ -19,27 +82,6 @@ export interface MerchantModalProps {
     productId: string;
     onClose: () => void;
     onSubmit: (merchantData: Partial<MerchantOption>) => void;
-}
-
-export interface ProductOption {
-    id: string;
-    name: string;
-    brand: string;
-    modelNumber: string;
-    image: string;
-    price: {
-        msrp: number;
-        current: number;
-    };
-    specs: string[];
-    notes: string;
-    reviews: {
-        source: string;
-        url: string;
-        title?: string;
-    }[];
-    status: 'considering' | 'shortlisted' | 'rejected';
-    merchants: MerchantOption[];
 }
 
 export interface PurchaseItem {
