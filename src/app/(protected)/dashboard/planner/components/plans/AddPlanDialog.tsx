@@ -50,8 +50,8 @@ export function AddPlanDialog({ onAddPlan }: AddPlanDialogProps) {
     const [newCategory, setNewCategory] = useState('');
     const [categoryInput, setCategoryInput] = useState("");
     const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
-    const inputRef = useRef<React.ElementRef<typeof CommandPrimitive.Input>>(null);
-    const commandRef = useRef<React.ElementRef<typeof CommandPrimitive>>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const commandRef = useRef<HTMLDivElement>(null);
 
 
     // Sync categories to localStorage
@@ -134,7 +134,7 @@ export function AddPlanDialog({ onAddPlan }: AddPlanDialogProps) {
                     <div className="space-y-2">
                         <Label htmlFor="category">Category</Label>
                         <Command
-                            ref={commandRef}
+                            ref={commandRef as React.RefObject<HTMLDivElement>}
                             className="rounded-lg border border-input"
                         >
                             <CommandInput
